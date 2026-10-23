@@ -6,14 +6,14 @@ Astro, Tailwind, MDX. Static output only. No new dependencies without asking.
 ## Content
 - `portfolio.md` (repo root) is the original content source. Its front-matter holds all config and content.
 - Target structure:
-  - `src/data/site.yaml`: site, theme, nav, profile, hero, focus, experience, education, skills, socials, footer
+  - `src/data/site.yaml`: site, theme, nav, profile (name + role make the hero), focus, experience, education, skills, socials, footer
   - `src/content/projects/<slug>/index.mdx`: one folder per project; frontmatter from `projects.items`, body from the case-study sections
   - Project images (cover, gallery) are colocated in the project folder and referenced relatively (`./cover.jpg`). They go through the `image()` schema helper and render with `<Image>` from `astro:assets`, never `<img>` or `public/`.
   - Videos stay in `public/media/` with a same-name `.jpg` poster next to each. `media` is the hero loop (`media/<name>.mp4`); `videos` holds extra loops shown in the case study with `<VideoCompare items={frontmatter.videos} />`.
 - Project schema (zod): title, slug, context, year, result?, summary, role?, cover? `{ src: image(), alt }`, media?, videos[] `{ src, poster?, caption }` (default []), gallery[] `{ src: image(), alt, caption? }` (default []), tags[], repo_url?, paper_url?, featured.
 
 ## Pages
-- Home (single page): hero → selected work → focus → experience → education → tools → contact
+- Home (single page): hero (status line, name, role) → selected work → focus → experience → education → tools → contact
 - `/projects/[slug]`: one centred column (`theme.column_width`, 800px), body text capped at `theme.text_width` (680px). ← Work breadcrumb → title → mono context → hairline → Year · Role · Result · Stack row → 16:9 media loop (cover alone if no video) → summary → numbered sections (01 Problem …) → Gallery → Links (only if repo/paper) → hairline → Next project →
   - Gallery: full-width images stacked vertically, hairlines between, mono caption below each. Never a grid.
 

@@ -63,12 +63,6 @@ export const siteSchema = z.object({
 		cv: z.string(),
 		status: z.string(),
 	}),
-	hero: z.object({
-		headline: z.string(),
-		rule: z.boolean(),
-		lede: z.string(),
-		link,
-	}),
 	about: z.object({ heading, text: z.string(), todo: z.string().optional() }),
 	focus: z.object({
 		heading,

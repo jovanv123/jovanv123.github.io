@@ -69,18 +69,12 @@ nav:
 # ------------------------------------------------------------
 profile:
   name: "Jovan Vasić"
-  role: "Mechatronics / Robotics Engineer"
+  role: "Robotics / AI Engineer"   # shown under the name in the hero
   location: "Munich, DE"
   photo: ""                       # optional; this layout works without one
   email: ""                       # TODO
   cv: "assets/cv.pdf"
   status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot
-
-hero:
-  headline: "Robot perception, manipulation & control"
-  rule: true                      # hairline under headline
-  lede: "From multi-camera perception and force-controlled insertion on industrial arms to bare-metal control loops on competition robots."
-  link: { label: "Get in touch →", href: "#contact" }   # text link, not a button
 
 # Page copy draft from portfolio.md — not rendered yet (not in the home section order).
 about:

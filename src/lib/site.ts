@@ -1,4 +1,3 @@
-import type { ImageMetadata } from 'astro';
 import { getCollection } from 'astro:content';
 import { z } from 'astro/zod';
 
@@ -69,10 +68,7 @@ export const siteSchema = z.object({
 		rule: z.boolean(),
 		lede: z.string(),
 		link,
-		photo: z.object({ src: z.string(), alt: z.string() }).optional(),
 	}),
-	now: z.object({ heading, items: z.array(z.string()) }),
-	notes: z.object({ heading }),
 	about: z.object({ heading, text: z.string(), todo: z.string().optional() }),
 	focus: z.object({
 		heading,
@@ -158,15 +154,6 @@ export function socialLinks(site: Site) {
 export function resolveHref(href: string) {
 	if (/^([a-z]+:|\/)/i.test(href)) return href;
 	return `/${href}`;
-}
-
-const assets = import.meta.glob<{ default: ImageMetadata }>('/src/assets/*.{jpg,jpeg,png,webp,avif}', {
-	eager: true,
-});
-
-/** site.yaml image name → image in src/assets/ for <Image>; undefined when empty or missing. */
-export function siteImage(name: string) {
-	return name ? assets[`/src/assets/${name}`]?.default : undefined;
 }
 
 /** Posters sit next to their video: "media/x.mp4" → "media/x.jpg". */

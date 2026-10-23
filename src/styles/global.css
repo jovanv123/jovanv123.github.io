@@ -34,15 +34,6 @@
 	--container-content: var(--site-max-width);
 	--container-column: var(--site-column-width);
 	--container-text: var(--site-text-width);
-
-	/* One-time fade for list rows on load; used as motion-safe:animate-fade-in. */
-	--animate-fade-in: fade-in 600ms ease-out both;
-
-	@keyframes fade-in {
-		from {
-			opacity: 0;
-		}
-	}
 }
 
 @layer base {
@@ -67,7 +58,7 @@
 
 	/* Text links: hairline underline, accent only on hover. */
 	a {
-		@apply underline decoration-border decoration-1 underline-offset-4 hover:text-accent hover:decoration-current motion-safe:transition-colors;
+		@apply underline decoration-border decoration-1 underline-offset-4 hover:text-accent hover:decoration-current;
 	}
 
 	:focus-visible {

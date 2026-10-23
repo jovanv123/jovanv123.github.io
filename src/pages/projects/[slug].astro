@@ -4,8 +4,6 @@ import { Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import VideoLoop from '../../components/VideoLoop.astro';
 import VideoCompare from '../../components/VideoCompare.astro';
-import Figure from '../../components/Figure.astro';
-import Callout from '../../components/Callout.astro';
 import { getProjects } from '../../lib/projects';
 
 export async function getStaticPaths() {
@@ -65,7 +63,7 @@ const sizes = '(min-width: 800px) 800px, 100vw';
 		<p class="mt-12 max-w-text text-xl leading-relaxed md:text-2xl">{data.summary}</p>
 
 		<div class="case-study">
-			<Content components={{ VideoCompare, Figure, Callout }} figures={data.figures} />
+			<Content components={{ VideoCompare }} />
 		</div>
 
 		{data.gallery.length > 0 && (

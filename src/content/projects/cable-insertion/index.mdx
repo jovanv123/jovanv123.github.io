@@ -7,9 +7,6 @@ year: 2026
 result: "4th of 160+ teams, qualifying round"
 summary: "Team lead. Full autonomy pipeline for inserting SFP and SC connectors: YOLO segmentation across three wrist cameras, SVD/DLT triangulation, PCA orientation estimation and impedance-controlled insertion on a UR5e. Transferred to a real xArm7 cell. Paper in preparation."
 media: "media/insert_real.mp4"
-metric: "4th / 160+"
-# figures:                                  # numbered in order; use <Figure of={props.figures} n={1} /> in the body
-#   - { src: "./fig-pipeline.jpg", caption: "TODO" }
 videos:
   - { src: "media/insertion_simulation.mp4", poster: "media/insertion_simulation.jpg", caption: "Simulation (Gazebo)" }
   - { src: "media/insert_real.mp4", poster: "media/insert_real.jpg", caption: "Real cell (xArm7)" }
@@ -34,10 +31,6 @@ Simulation in Gazebo and Intrinsic Flowstate; transfer to a real xArm7 cell
 with RGB cameras.
 
 <VideoCompare items={frontmatter.videos} />
-
-<Callout>
-  TODO — e.g. the stereo reconstruction track: why it lost to direct 3D estimation.
-</Callout>
 
 ## My contribution
 

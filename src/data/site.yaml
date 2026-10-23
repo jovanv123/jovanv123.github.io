@@ -3,7 +3,7 @@
 #  Direction: light "lab" layout, black nav bar (ref: datameister.ai) —
 #  text-led, hairline rules, area/topic listings, text links.
 #  Leave a field as "" to hide it. TODO = fill in.
-#  Projects live in src/content/projects/<slug>.mdx.
+#  Projects live in src/content/projects/<slug>/index.mdx (images colocated).
 # ============================================================
 
 site:

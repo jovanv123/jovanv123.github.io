@@ -7,12 +7,15 @@ Astro, Tailwind, MDX. Static output only. No new dependencies without asking.
 - `portfolio.md` (repo root) is the original content source. Its front-matter holds all config and content.
 - Target structure:
   - `src/data/site.yaml`: site, theme, nav, profile, hero, focus, experience, education, skills, socials, footer
-  - `src/content/projects/<slug>.mdx`: one file per project; frontmatter from `projects.items`, body from the case-study sections
-- Project schema (zod): title, slug, context, year, result?, summary, media?, tags[], repo_url?, paper_url?, featured.
+  - `src/content/projects/<slug>/index.mdx`: one folder per project; frontmatter from `projects.items`, body from the case-study sections
+  - Project images (cover, gallery) are colocated in the project folder and referenced relatively (`./cover.jpg`). They go through the `image()` schema helper and render with `<Image>` from `astro:assets`, never `<img>` or `public/`.
+  - Videos stay in `public/media/<slug>.mp4` and are referenced by the `media` field (`media/<slug>.mp4`).
+- Project schema (zod): title, slug, context, year, result?, summary, cover? `{ src: image(), alt }`, media?, gallery[] `{ src: image(), alt, caption? }` (default []), tags[], repo_url?, paper_url?, featured.
 
 ## Pages
 - Home (single page): hero → focus → selected work → experience → education → tools → contact
-- `/projects/[slug]`: Problem → Architecture → My contribution → Results → Links
+- `/projects/[slug]`: header → media loop (cover as poster; cover alone if no video) → Problem → Architecture → My contribution → Results → Gallery → Links
+  - Gallery: full-width images stacked vertically, hairlines between, mono caption below each. Never a grid.
 
 ## Design
 - Reference: datameister.ai. Light lab aesthetic, text-led: white page (#FFFFFF), near-black text (#0A0A0A), muted #71717A, hairlines #E4E4E7.

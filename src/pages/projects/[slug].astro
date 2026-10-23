@@ -1,0 +1,99 @@
+---
+import { getCollection, render } from 'astro:content';
+import { getImage, Image } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { resolveHref } from '../../lib/site';
+
+export async function getStaticPaths() {
+	const projects = await getCollection('projects');
+	return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { data } = project;
+const { Content } = await render(project);
+
+// The cover doubles as the video poster; without a video it is shown on its own.
+const poster = data.cover && data.media ? await getImage({ src: data.cover.src, width: 1600 }) : undefined;
+
+const links = [
+	data.repo_url ? { label: 'Code', href: data.repo_url } : null,
+	data.paper_url ? { label: 'Paper', href: data.paper_url } : null,
+	{ label: 'All work', href: '/#projects' },
+].filter((link) => link !== null);
+
+const sizes = '(min-width: 1280px) 1280px, 100vw';
+---
+
+<BaseLayout title={data.title} description={data.summary}>
+	<article>
+		<header class="pt-16 pb-16 md:pt-24 md:pb-20">
+			<p class="meta">
+				<a href="/#projects" class="no-underline">Work</a> / {data.year}
+			</p>
+			<h1 class="mt-10 max-w-4xl text-4xl leading-none tracking-tighter sm:text-5xl md:text-6xl">{data.title}</h1>
+			<p class="mt-4 text-muted">{data.context}</p>
+			<p class="mt-10 max-w-3xl text-xl leading-relaxed md:text-2xl">{data.summary}</p>
+			<dl class="mt-12 divide-y divide-border border-y border-border">
+				{data.result && (
+					<div class="grid gap-x-8 gap-y-2 py-5 md:grid-cols-12">
+						<dt class="meta md:col-span-3">Result</dt>
+						<dd class="md:col-span-9">{data.result}</dd>
+					</div>
+				)}
+				<div class="grid gap-x-8 gap-y-2 py-5 md:grid-cols-12">
+					<dt class="meta md:col-span-3">Tools</dt>
+					<dd class="md:col-span-9">
+						<ul class="meta flex flex-wrap gap-x-3 gap-y-1" aria-label="Tags">
+							{data.tags.map((tag) => <li>{tag}</li>)}
+						</ul>
+					</dd>
+				</div>
+			</dl>
+		</header>
+
+		{data.media ? (
+			<video
+				src={resolveHref(data.media)}
+				poster={poster?.src}
+				class="w-full"
+				autoplay
+				muted
+				loop
+				playsinline
+				aria-label={data.cover?.alt ?? data.title}
+			/>
+		) : data.cover && (
+			<Image src={data.cover.src} alt={data.cover.alt} widths={[640, 1280, 1920]} sizes={sizes} class="h-auto w-full" />
+		)}
+
+		<div class="case-study">
+			<Content />
+		</div>
+
+		{data.gallery.length > 0 && (
+			<section aria-labelledby="gallery-heading" class="border-t border-border py-16 md:py-20">
+				<h2 id="gallery-heading" class="text-2xl tracking-tight md:text-3xl">Gallery</h2>
+				<ol class="mt-10 divide-y divide-border">
+					{data.gallery.map((item) => (
+						<li class="py-10 first:pt-0">
+							<figure>
+								<Image src={item.src} alt={item.alt} widths={[640, 1280, 1920]} sizes={sizes} class="h-auto w-full" />
+								{item.caption && <figcaption class="meta mt-4 max-w-3xl">{item.caption}</figcaption>}
+							</figure>
+						</li>
+					))}
+				</ol>
+			</section>
+		)}
+
+		<section aria-labelledby="links-heading" class="border-t border-border py-16 md:py-20">
+			<h2 id="links-heading" class="text-2xl tracking-tight md:text-3xl">Links</h2>
+			<ul class="mt-10 divide-y divide-border border-y border-border">
+				{links.map((link) => (
+					<li class="py-5"><a href={link.href}>{link.label}</a></li>
+				))}
+			</ul>
+		</section>
+	</article>
+</BaseLayout>

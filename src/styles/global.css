@@ -68,3 +68,36 @@
 @utility meta {
 	@apply font-mono text-xs tracking-wider text-muted uppercase;
 }
+
+/* MDX case-study body: each h2 opens a section with a hairline rule. */
+@layer components {
+	.case-study {
+		@apply max-w-3xl pb-16 md:pb-20;
+
+		& h2 {
+			@apply mt-16 border-t border-border pt-16 text-2xl tracking-tight md:mt-20 md:pt-20 md:text-3xl;
+		}
+
+		& h3 {
+			@apply mt-10 text-xl tracking-tight;
+		}
+
+		& p,
+		& ul,
+		& ol {
+			@apply mt-6 text-lg leading-relaxed;
+		}
+
+		& ul {
+			@apply list-disc pl-5;
+		}
+
+		& ol {
+			@apply list-decimal pl-5;
+		}
+
+		& code {
+			@apply font-mono text-sm;
+		}
+	}
+}

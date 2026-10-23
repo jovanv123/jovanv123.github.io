@@ -1,8 +1,9 @@
 ---
 import { getCollection, render } from 'astro:content';
-import { getImage, Image } from 'astro:assets';
+import { Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { resolveHref } from '../../lib/site';
+import VideoLoop from '../../components/VideoLoop.astro';
+import VideoCompare from '../../components/VideoCompare.astro';
 
 export async function getStaticPaths() {
 	const projects = await getCollection('projects');
@@ -12,9 +13,6 @@ export async function getStaticPaths() {
 const { project } = Astro.props;
 const { data } = project;
 const { Content } = await render(project);
-
-// The cover doubles as the video poster; without a video it is shown on its own.
-const poster = data.cover && data.media ? await getImage({ src: data.cover.src, width: 1600 }) : undefined;
 
 const links = [
 	data.repo_url ? { label: 'Code', href: data.repo_url } : null,
@@ -52,23 +50,15 @@ const sizes = '(min-width: 1280px) 1280px, 100vw';
 			</dl>
 		</header>
 
+		{/* Hero loop; the cover stands in when there is no video. */}
 		{data.media ? (
-			<video
-				src={resolveHref(data.media)}
-				poster={poster?.src}
-				class="w-full"
-				autoplay
-				muted
-				loop
-				playsinline
-				aria-label={data.cover?.alt ?? data.title}
-			/>
+			<VideoLoop src={data.media} class="w-full" aria-label={data.cover?.alt ?? data.title} />
 		) : data.cover && (
 			<Image src={data.cover.src} alt={data.cover.alt} widths={[640, 1280, 1920]} sizes={sizes} class="h-auto w-full" />
 		)}
 
 		<div class="case-study">
-			<Content />
+			<Content components={{ VideoCompare }} />
 		</div>
 
 		{data.gallery.length > 0 && (

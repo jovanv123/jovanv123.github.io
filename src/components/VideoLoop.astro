@@ -1,0 +1,25 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { posterFor, resolveHref } from '../lib/site';
+
+interface Props extends Omit<HTMLAttributes<'video'>, 'src' | 'poster'> {
+	/** Path in public/, e.g. "media/<name>.mp4". */
+	src: string;
+	/** Defaults to the .jpg next to the video. */
+	poster?: string;
+}
+
+// Silent loop without controls. Pass autoplay={false} to start it from script instead.
+const { src, poster = posterFor(src), autoplay = true, ...attrs } = Astro.props;
+---
+
+<video
+	src={resolveHref(src)}
+	poster={resolveHref(poster)}
+	autoplay={autoplay}
+	muted
+	loop
+	playsinline
+	preload="metadata"
+	{...attrs}
+></video>

@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Section from '../components/Section.astro';
+import VideoLoop from '../components/VideoLoop.astro';
 import { formatDate, getSite, resolveHref, socialLinks } from '../lib/site';
 
 const site = await getSite();
@@ -61,7 +62,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 	<Section id="projects" heading={site.projects.heading}>
 		<ol class="divide-y divide-border">
 			{projects.map(({ data }) => (
-				<li class={row}>
+				<li class:list={[row, data.media && 'group relative']} data-preview={data.media ? '' : undefined}>
 					<p class="font-mono text-sm text-muted md:col-span-1">{data.year}</p>
 					<div class="md:col-span-5">
 						<h3 class="text-xl tracking-tight md:text-2xl">
@@ -73,6 +74,14 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 					<ul class="meta flex flex-wrap gap-x-3 gap-y-1 md:col-span-3" aria-label="Tags">
 						{data.tags.map((tag) => <li>{tag}</li>)}
 					</ul>
+					{data.media && (
+						<VideoLoop
+							src={data.media}
+							autoplay={false}
+							class="pointer-events-none absolute top-1/2 right-0 z-10 hidden aspect-video w-80 -translate-y-1/2 border border-border bg-background object-cover md:group-hover:block md:group-focus-within:block"
+							aria-hidden="true"
+						/>
+					)}
 				</li>
 			))}
 		</ol>
@@ -141,3 +150,18 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</dl>
 	</Section>
 </BaseLayout>
+
+<script>
+	// Row previews play only while shown: desktop pointers, on hover or keyboard focus.
+	const desktop = window.matchMedia('(hover: hover) and (min-width: 48rem)');
+	for (const row of document.querySelectorAll<HTMLElement>('[data-preview]')) {
+		const video = row.querySelector('video');
+		if (!video) continue;
+		const play = () => desktop.matches && video.play().catch(() => {});
+		const stop = () => video.pause();
+		row.addEventListener('mouseenter', play);
+		row.addEventListener('mouseleave', stop);
+		row.addEventListener('focusin', play);
+		row.addEventListener('focusout', stop);
+	}
+</script>

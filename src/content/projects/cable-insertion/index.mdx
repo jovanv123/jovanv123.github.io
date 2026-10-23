@@ -5,7 +5,10 @@ context: "Intrinsic AI for Industry Challenge · Bachelor's thesis"
 year: 2026
 result: "4th of 160+ teams, qualifying round"
 summary: "Team lead. Full autonomy pipeline for inserting SFP and SC connectors: YOLO segmentation across three wrist cameras, SVD/DLT triangulation, PCA orientation estimation and impedance-controlled insertion on a UR5e. Transferred to a real xArm7 cell. Paper in preparation."
-media: "media/cable-insertion.mp4" # TODO: short loop, <3 MB
+media: "media/insert_real.mp4"
+videos:
+  - { src: "media/insertion_simulation.mp4", poster: "media/insertion_simulation.jpg", caption: "Simulation (Gazebo)" }
+  - { src: "media/insert_real.mp4", poster: "media/insert_real.jpg", caption: "Real cell (xArm7)" }
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
@@ -25,6 +28,8 @@ Two tracks — stereo 2D segmentation + 3D reconstruction vs. direct 3D
 estimation. Impedance control with F/T feedback for the insertion phase.
 Simulation in Gazebo and Intrinsic Flowstate; transfer to a real xArm7 cell
 with RGB cameras.
+
+<VideoCompare items={frontmatter.videos} />
 
 ## My contribution
 

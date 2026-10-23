@@ -154,6 +154,11 @@ export function resolveHref(href: string) {
 	return `/${href}`;
 }
 
+/** Posters sit next to their video: "media/x.mp4" → "media/x.jpg". */
+export function posterFor(video: string) {
+	return video.replace(/\.[^./]+$/, '.jpg');
+}
+
 /** "2023-09" → "Sep 2023", "2026" → "2026", "present" → "present". */
 export function formatDate(value: string) {
 	const match = /^(\d{4})-(\d{2})$/.exec(value);

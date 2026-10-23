@@ -1,0 +1,20 @@
+---
+import VideoLoop from './VideoLoop.astro';
+
+interface Props {
+	/** The project's `videos` frontmatter. */
+	items: { src: string; poster?: string; caption: string }[];
+}
+
+// Side by side from md up, stacked below; hairline between the two.
+const { items } = Astro.props;
+---
+
+<div class="mt-10 grid divide-y divide-border border-y border-border md:grid-cols-2 md:gap-x-8 md:divide-y-0">
+	{items.map((item) => (
+		<figure class="py-6">
+			<VideoLoop src={item.src} poster={item.poster} class="aspect-video w-full object-cover" aria-label={item.caption} />
+			<figcaption class="meta mt-4">{item.caption}</figcaption>
+		</figure>
+	))}
+</div>

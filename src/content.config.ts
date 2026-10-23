@@ -16,8 +16,12 @@ const projects = defineCollection({
 			result: z.string().optional(),
 			summary: z.string(),
 			cover: figure.omit({ caption: true }).optional(),
-			// Video loop in public/, e.g. "media/<slug>.mp4".
+			// Hero video loop in public/, e.g. "media/<slug>.mp4". Poster is the .jpg next to it.
 			media: z.string().optional(),
+			// Extra loops shown in the case study via <VideoCompare items={frontmatter.videos} />.
+			videos: z
+				.array(z.object({ src: z.string(), poster: z.string().optional(), caption: z.string() }))
+				.default([]),
 			gallery: z.array(figure).default([]),
 			tags: z.array(z.string()),
 			repo_url: z.url().optional(),

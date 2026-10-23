@@ -29,7 +29,7 @@ theme:
   borders: "1px hairline"         # rules between sections/items, no boxes
   shadows: false
   spacing_scale: "spacious"
-  animations: false               # at most: fade-in on load, nothing on scroll
+  animations: false               # at most: fade-in on load, nothing on scroll (rows fade in once; off under reduced motion)
   cursor_effects: false
 
 colors:
@@ -77,10 +77,21 @@ profile:
   status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot
 
 hero:
-  headline: "Robot perception, manipulation & control"
+  headline: "I build robots that see a part and put it where it belongs."   # TODO: first person, one sentence
+  # Optional portrait, right of the headline on desktop. Put the file in src/assets/
+  # and give its name here, e.g. { src: "portrait.jpg", alt: "Jovan in the lab" }.
+  photo: { src: "", alt: "" }
   rule: true                      # hairline under headline
   lede: "From multi-camera perception and force-controlled insertion on industrial arms to bare-metal control loops on competition robots."
   link: { label: "Get in touch →", href: "#contact" }   # text link, not a button
+
+# "Now" lines under the hero, mono; the first gets the accent dot. Empty list hides the block.
+now:
+  heading: "Now"
+  items:
+    - "Writing up the cable-insertion paper"            # TODO
+    - "MSc MRBE at TUM, first semester"                 # TODO
+    - "Reading: TODO"                                   # TODO
 
 # Page copy draft from portfolio.md — not rendered yet (not in the home section order).
 about:
@@ -108,6 +119,10 @@ focus:                            # area / description / topics
 projects:
   heading: "Selected work"
   layout: "list"                  # full-width rows separated by rules
+
+# Short dated entries from src/content/notes/<slug>/index.md, after Selected work.
+notes:
+  heading: "Lab notes"
 
 experience:
   heading: "Experience"

@@ -1,0 +1,20 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+	/** The project's `figures`, passed to the MDX body as props.figures. */
+	of: { src: ImageMetadata; caption: string; alt: string }[];
+	/** 1-based figure number. */
+	n: number;
+}
+
+const { of, n } = Astro.props;
+const figure = of[n - 1];
+if (!figure) throw new Error(`Figure ${n} is not in this project's frontmatter figures.`);
+---
+
+<figure class="mt-10">
+	<Image src={figure.src} alt={figure.alt} widths={[640, 800, 1600]} sizes="(min-width: 800px) 800px, 100vw" class="h-auto w-full" />
+	<figcaption class="meta mt-4 max-w-text">Fig. {n} — {figure.caption}</figcaption>
+</figure>

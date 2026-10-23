@@ -11,6 +11,9 @@ const palette = z.object({
 	muted: z.string(),
 	accent: z.string(),
 	border: z.string(),
+	inverse: z.string(),
+	'inverse-text': z.string(),
+	'inverse-muted': z.string(),
 });
 
 export const siteSchema = z.object({
@@ -24,7 +27,7 @@ export const siteSchema = z.object({
 	}),
 	theme: z.object({
 		reference: z.string(),
-		mode: z.enum(['dark', 'light']),
+		mode: z.literal('light'),
 		layout: z.string(),
 		project_pages: z.boolean(),
 		max_width: z.string(),
@@ -35,7 +38,7 @@ export const siteSchema = z.object({
 		animations: z.boolean(),
 		cursor_effects: z.boolean(),
 	}),
-	colors: z.object({ dark: palette, light: palette }),
+	colors: palette,
 	typography: z.object({
 		heading_font: z.string(),
 		body_font: z.string(),

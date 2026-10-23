@@ -1,6 +1,6 @@
 # ============================================================
 #  SITE CONFIG — Jovan Vasić
-#  Direction: dark "lab" layout (ref: datameister.ai) —
+#  Direction: light "lab" layout, black nav bar (ref: datameister.ai) —
 #  text-led, hairline rules, area/topic listings, text links.
 #  Leave a field as "" to hide it. TODO = fill in.
 #  Projects live in src/content/projects/<slug>.mdx.
@@ -19,7 +19,7 @@ site:
 # ------------------------------------------------------------
 theme:
   reference: "https://datameister.ai"
-  mode: "dark"                    # dark-first; light optional later
+  mode: "light"
   layout: "single-page"           # home is one page...
   project_pages: true             # ...each project gets /projects/<slug>
   max_width: "1100px"
@@ -31,20 +31,15 @@ theme:
   cursor_effects: false
 
 colors:
-  dark:
-    background: "#0A0A0A"
-    surface:    "#0A0A0A"         # same as background — no cards
-    text:       "#EDEDED"
-    muted:      "#8A8A8A"
-    accent:     "#FF5F1F"         # ONE accent: links on hover, status dot
-    border:     "#262626"
-  light:
-    background: "#FAFAFA"
-    surface:    "#FAFAFA"
-    text:       "#111111"
-    muted:      "#6B6B6B"
-    accent:     "#E04E10"
-    border:     "#E5E5E5"
+  background:    "#FFFFFF"
+  surface:       "#F4F4F5"        # footer band — flat fill, no cards
+  text:          "#0A0A0A"
+  muted:         "#71717A"
+  accent:        "#FF5F1F"        # ONE accent: links on hover, focus, status dot
+  border:        "#E4E4E7"
+  inverse:       "#0A0A0A"        # black nav bar
+  inverse-text:  "#FFFFFF"        # nav logo, active/hover links
+  inverse-muted: "#A1A1AA"        # inactive nav links (#71717A fails contrast on black)
 
 typography:
   heading_font: "Geist"

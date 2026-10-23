@@ -1,6 +1,6 @@
 import type { Site } from './site';
 
-type Palette = Site['colors']['dark'];
+type Palette = Site['colors'];
 
 const paletteVars = (palette: Palette) =>
 	Object.entries(palette)
@@ -13,15 +13,13 @@ const paletteVars = (palette: Palette) =>
  * site.yaml stays the single source of truth for design tokens.
  */
 export function themeCss({ theme, colors, typography }: Site) {
-	const other = theme.mode === 'dark' ? 'light' : 'dark';
 	return [
 		`:root {`,
-		paletteVars(colors[theme.mode]),
+		paletteVars(colors),
 		`--site-max-width: ${theme.max_width};`,
 		`--site-base-size: ${typography.base_size};`,
 		`--site-line-height: ${typography.line_height};`,
 		`--site-heading-weight: ${typography.heading_weight};`,
 		`}`,
-		`:root[data-theme="${other}"] { ${paletteVars(colors[other])} }`,
 	].join(' ');
 }

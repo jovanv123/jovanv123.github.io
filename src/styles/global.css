@@ -22,6 +22,9 @@
 	--color-muted: var(--site-color-muted);
 	--color-accent: var(--site-color-accent);
 	--color-border: var(--site-color-border);
+	--color-inverse: var(--site-color-inverse);
+	--color-inverse-text: var(--site-color-inverse-text);
+	--color-inverse-muted: var(--site-color-inverse-muted);
 
 	/* --font-geist / --font-geist-mono are defined by Astro's Fonts API (astro.config.mjs). */
 	--font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;

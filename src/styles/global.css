@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Values come from site.yaml (theme, colors, typography) and are
+ * emitted as --site-* properties by src/lib/theme.ts in the base layout.
+ * Tailwind's default palette, radii and shadows are removed so only these
+ * tokens exist as utilities.
+ */
+@theme {
+	--color-*: initial;
+	--radius-*: initial;
+	--shadow-*: initial;
+	--inset-shadow-*: initial;
+	--drop-shadow-*: initial;
+	--text-shadow-*: initial;
+}
+
+@theme inline {
+	--color-background: var(--site-color-background);
+	--color-surface: var(--site-color-surface);
+	--color-text: var(--site-color-text);
+	--color-muted: var(--site-color-muted);
+	--color-accent: var(--site-color-accent);
+	--color-border: var(--site-color-border);
+
+	/* --font-geist / --font-geist-mono are defined by Astro's Fonts API (astro.config.mjs). */
+	--font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+	--font-mono: var(--font-geist-mono), ui-monospace, monospace;
+	--font-weight-heading: var(--site-heading-weight);
+
+	--container-content: var(--site-max-width);
+}
+
+@layer base {
+	html {
+		background-color: var(--color-background);
+		color: var(--color-text);
+		font-family: var(--font-sans);
+		font-size: var(--site-base-size);
+		line-height: var(--site-line-height);
+	}
+
+	h1,
+	h2,
+	h3,
+	h4 {
+		font-weight: var(--font-weight-heading);
+	}
+
+	body {
+		@apply antialiased;
+	}
+
+	/* Text links: hairline underline, accent only on hover. */
+	a {
+		@apply underline decoration-border decoration-1 underline-offset-4 hover:text-accent hover:decoration-current;
+	}
+
+	:focus-visible {
+		@apply outline-1 outline-offset-4 outline-accent;
+	}
+}
+
+/* Mono metadata label: tags, dates, section labels, status line. */
+@utility meta {
+	@apply font-mono text-xs tracking-wider text-muted uppercase;
+}

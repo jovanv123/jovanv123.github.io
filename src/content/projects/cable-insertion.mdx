@@ -1,0 +1,33 @@
+---
+title: "Autonomous Cable Insertion"
+slug: "cable-insertion"
+context: "Intrinsic AI for Industry Challenge · Bachelor's thesis"
+year: 2026
+result: "4th of 160+ teams, qualifying round"
+summary: "Team lead. Full autonomy pipeline for inserting SFP and SC connectors: YOLO segmentation across three wrist cameras, SVD/DLT triangulation, PCA orientation estimation and impedance-controlled insertion on a UR5e. Transferred to a real xArm7 cell. Paper in preparation."
+media: "media/cable-insertion.mp4" # TODO: short loop, <3 MB
+tags: ["ROS 2", "Gazebo", "YOLOv11", "Python", "UR5e", "xArm7"]
+# repo_url:
+# paper_url:
+featured: true
+---
+
+## Problem
+
+TODO — why connector insertion is hard (tolerances, occlusion, contact).
+
+## Architecture
+
+Two tracks — stereo 2D segmentation + 3D reconstruction vs. direct 3D
+estimation. Impedance control with F/T feedback for the insertion phase.
+Simulation in Gazebo and Intrinsic Flowstate; transfer to a real xArm7 cell
+with RGB cameras.
+
+## My contribution
+
+Team lead; perception pipeline and insertion policy.
+
+## Results
+
+4th of 160+ teams in qualifying. Direct 3D estimation outperformed the
+reconstruction approach. TODO: success rate / timing numbers.

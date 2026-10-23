@@ -1,0 +1,43 @@
+---
+import { Font } from 'astro:assets';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { getSite, resolveHref } from '../lib/site';
+import { themeCss } from '../lib/theme';
+import '../styles/global.css';
+
+interface Props {
+	/** Page-specific title; falls back to site.title. */
+	title?: string;
+	description?: string;
+}
+
+const site = await getSite();
+const title = Astro.props.title ? `${Astro.props.title} — ${site.site.title}` : site.site.title;
+const description = Astro.props.description ?? site.site.description;
+---
+
+<!doctype html>
+<html lang={site.site.language} data-theme={site.theme.mode}>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		{site.site.favicon && <link rel="icon" href={resolveHref(site.site.favicon)} />}
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		{site.site.og_image && <meta property="og:image" content={resolveHref(site.site.og_image)} />}
+		<Font cssVariable="--font-geist" preload />
+		<Font cssVariable="--font-geist-mono" />
+		<style is:inline set:html={themeCss(site)}></style>
+	</head>
+	<body>
+		<Nav site={site} />
+		<main id="main" class="mx-auto max-w-content px-4 md:px-8">
+			<slot />
+		</main>
+		<Footer site={site} />
+	</body>
+</html>

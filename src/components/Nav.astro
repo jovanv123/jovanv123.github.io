@@ -1,0 +1,26 @@
+---
+import { resolveHref, type Site } from '../lib/site';
+
+interface Props {
+	site: Site;
+}
+
+const { nav } = Astro.props.site;
+---
+
+<header class:list={['z-10 border-b border-border bg-background', { 'sticky top-0': nav.sticky }]}>
+	<a href="#main" class="meta sr-only bg-background p-4 focus:not-sr-only focus:absolute">Skip to content</a>
+	<nav
+		aria-label="Primary"
+		class="mx-auto flex max-w-content flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between md:px-8 md:py-5"
+	>
+		<a href="/" class="font-medium tracking-tight no-underline">{nav.logo_text}</a>
+		<ul class="flex flex-wrap gap-x-6 gap-y-2">
+			{nav.links.map((link) => (
+				<li>
+					<a href={resolveHref(link.href)} class="meta no-underline hover:text-accent">{link.label}</a>
+				</li>
+			))}
+		</ul>
+	</nav>
+</header>

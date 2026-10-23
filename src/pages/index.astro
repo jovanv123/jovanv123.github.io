@@ -1,11 +1,143 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
+import { formatDate, getSite, resolveHref, socialLinks } from '../lib/site';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const site = await getSite();
+const { profile, hero, focus, experience, education, skills, contact } = site;
+const socials = socialLinks(site);
+
+// Featured first, then newest.
+const projects = (await getCollection('projects')).sort(
+	(a, b) => Number(b.data.featured) - Number(a.data.featured) || b.data.year - a.data.year,
+);
+
+// Contact rows: label | value, hidden when empty.
+const contactRows = [
+	contact.show_email && profile.email
+		? { label: 'Email', text: profile.email, href: `mailto:${profile.email}` }
+		: null,
+	profile.cv ? { label: 'CV', text: 'Download PDF', href: resolveHref(profile.cv) } : null,
+	...socials.map((social) => ({ label: social.label, text: social.href.replace(/^https?:\/\//, ''), href: social.href })),
+	profile.location ? { label: 'Based in', text: profile.location } : null,
+].filter((row) => row !== null);
+
+const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<BaseLayout>
+	<section id="hero" aria-labelledby="hero-heading" class="pt-16 pb-20 md:pt-28 md:pb-28">
+		<p class="meta flex items-center gap-3">
+			<span class="inline-block size-2 shrink-0 bg-accent" aria-hidden="true"></span>
+			{profile.status}
+		</p>
+		<h1 id="hero-heading" class="mt-10 max-w-4xl text-5xl leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
+			{hero.headline}
+		</h1>
+		{hero.rule && <hr class="mt-12 w-20 border-text" />}
+		<p class="mt-12 max-w-2xl text-xl leading-relaxed md:text-2xl">{hero.lede}</p>
+		<div class="mt-12 flex flex-col gap-6 sm:flex-row sm:items-baseline sm:justify-between">
+			<a href={resolveHref(hero.link.href)} class="text-lg">{hero.link.label}</a>
+			<p class="meta">{profile.name} · {profile.role} · {profile.location}</p>
+		</div>
+	</section>
+
+	<Section id="focus" heading={focus.heading}>
+		<ul class="divide-y divide-border">
+			{focus.items.map((item) => (
+				<li class={row}>
+					<h3 class="text-xl tracking-tight md:col-span-4">{item.title}</h3>
+					<p class="text-muted md:col-span-5">{item.text}</p>
+					<div class="md:col-span-3">
+						<p class="meta mb-2">Topics</p>
+						<p class="font-mono text-sm">{item.topics.join(' / ')}</p>
+					</div>
+				</li>
+			))}
+		</ul>
+	</Section>
+
+	<Section id="projects" heading={site.projects.heading}>
+		<ol class="divide-y divide-border">
+			{projects.map(({ data }) => (
+				<li class={row}>
+					<p class="font-mono text-sm text-muted md:col-span-1">{data.year}</p>
+					<div class="md:col-span-5">
+						<h3 class="text-xl tracking-tight md:text-2xl">
+							<a href={`/projects/${data.slug}`} class="no-underline">{data.title}</a>
+						</h3>
+						<p class="mt-1 text-sm text-muted">{data.context}</p>
+					</div>
+					<p class="text-sm md:col-span-3">{data.result}</p>
+					<ul class="meta flex flex-wrap gap-x-3 gap-y-1 md:col-span-3" aria-label="Tags">
+						{data.tags.map((tag) => <li>{tag}</li>)}
+					</ul>
+				</li>
+			))}
+		</ol>
+	</Section>
+
+	<Section id="experience" heading={experience.heading}>
+		<ol class="divide-y divide-border">
+			{experience.items.map((item) => (
+				<li class={row}>
+					<p class="font-mono text-sm text-muted md:col-span-3">
+						<time datetime={item.start}>{formatDate(item.start)}</time> –{' '}
+						{item.end === 'present' ? item.end : <time datetime={item.end}>{formatDate(item.end)}</time>}
+					</p>
+					<div class="md:col-span-4">
+						<h3 class="text-xl tracking-tight">{item.role}</h3>
+						<p class="mt-1 text-sm text-muted">
+							{item.company_url ? <a href={item.company_url}>{item.company}</a> : item.company}
+						</p>
+					</div>
+					<ul class="space-y-2 text-muted md:col-span-5">
+						{item.points.map((point) => <li>{point}</li>)}
+					</ul>
+				</li>
+			))}
+		</ol>
+	</Section>
+
+	<Section id="education" heading={education.heading}>
+		<ol class="divide-y divide-border">
+			{education.items.map((item) => (
+				<li class={row}>
+					<p class="font-mono text-sm text-muted md:col-span-3">
+						<time datetime={item.start}>{formatDate(item.start)}</time> –{' '}
+						{item.end === 'present' ? item.end : <time datetime={item.end}>{formatDate(item.end)}</time>}
+					</p>
+					<div class="md:col-span-4">
+						<h3 class="text-xl tracking-tight">{item.degree}</h3>
+						<p class="mt-1 text-sm text-muted">{item.school}</p>
+					</div>
+					{item.note && <p class="text-muted md:col-span-5">{item.note}</p>}
+				</li>
+			))}
+		</ol>
+	</Section>
+
+	<Section id="skills" heading={skills.heading}>
+		<dl class="divide-y divide-border">
+			{skills.groups.map((group) => (
+				<div class="grid gap-x-8 gap-y-2 py-5 md:grid-cols-12">
+					<dt class="meta md:col-span-3">{group.name}</dt>
+					<dd class="font-mono text-sm md:col-span-9">{group.items.join(' / ')}</dd>
+				</div>
+			))}
+		</dl>
+	</Section>
+
+	<Section id="contact" heading={contact.heading}>
+		{contact.message && <p class="mt-8 max-w-2xl text-xl leading-relaxed md:text-2xl">{contact.message}</p>}
+		<dl class="divide-y divide-border">
+			{contactRows.map((item) => (
+				<div class="grid gap-x-8 gap-y-2 py-5 md:grid-cols-12">
+					<dt class="meta md:col-span-3">{item.label}</dt>
+					<dd class="md:col-span-9">{item.href ? <a href={item.href}>{item.text}</a> : item.text}</dd>
+				</div>
+			))}
+		</dl>
+	</Section>
+</BaseLayout>

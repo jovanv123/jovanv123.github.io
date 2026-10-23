@@ -66,6 +66,7 @@ export const siteSchema = z.object({
 		rule: z.boolean(),
 		lede: z.string(),
 		link,
+		video: z.object({ src: z.string(), caption: z.string(), link }).optional(),
 	}),
 	about: z.object({ heading, text: z.string(), todo: z.string().optional() }),
 	focus: z.object({

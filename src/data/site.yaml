@@ -79,6 +79,11 @@ hero:
   rule: true                      # hairline under headline
   lede: "From multi-camera perception and force-controlled insertion on industrial arms to bare-metal control loops on competition robots."
   link: { label: "Get in touch →", href: "#contact" }   # text link, not a button
+  # Featured loop under the hero; the only autoplaying video on the home page.
+  video:
+    src: "media/insert_real.mp4"
+    caption: "Autonomous SFP insertion · real cell · xArm7"
+    link: { label: "Case study →", href: "projects/cable-insertion" }
 
 # Page copy draft from portfolio.md — not rendered yet (not in the home section order).
 about:

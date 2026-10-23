@@ -13,7 +13,7 @@ Astro, Tailwind, MDX. Static output only. No new dependencies without asking.
 - Project schema (zod): title, slug, context, year, result?, summary, cover? `{ src: image(), alt }`, media?, videos[] `{ src, poster?, caption }` (default []), gallery[] `{ src: image(), alt, caption? }` (default []), tags[], repo_url?, paper_url?, featured.
 
 ## Pages
-- Home (single page): hero → focus → selected work → experience → education → tools → contact
+- Home (single page): hero → featured video (`hero.video`, the only autoplaying video; caption + case-study link) → focus → selected work → experience → education → tools → contact
 - `/projects/[slug]`: header → full-width media loop (cover alone if no video) → Problem → Architecture → My contribution → Results → Gallery → Links
   - Gallery: full-width images stacked vertically, hairlines between, mono caption below each. Never a grid.
 
@@ -25,7 +25,7 @@ Astro, Tailwind, MDX. Static output only. No new dependencies without asking.
 - Fonts: Geist and Geist Mono. Use mono for tags, dates, metadata and the status line.
 - 1px hairline rules separate sections and list items. Never use boxes.
 - Use the single accent color (#FF5F1F) only for hover, focus and the status dot. In the black nav, hover is white instead.
-- Projects render as full-width list rows: year | title + context | result | tags. Rows with media show a muted preview on hover/focus (desktop only, never autoplayed on mobile); the full loop is on the detail page.
+- Projects render as full-width list rows: year | title + context | result | tags. Rows with media end with a 240px 16:9 poster thumbnail (`preload="none"`) that plays on desktop hover and resets on leave; static poster below the text on mobile. Home videos show posters only under `prefers-reduced-motion`.
 - Banned:
   - card grids, box-shadow, gradients, glassmorphism
   - any border-radius > 0

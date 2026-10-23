@@ -10,7 +10,7 @@ interface Props extends Omit<HTMLAttributes<'video'>, 'src' | 'poster'> {
 }
 
 // Silent loop without controls. Pass autoplay={false} to start it from script instead.
-const { src, poster = posterFor(src), autoplay = true, ...attrs } = Astro.props;
+const { src, poster = posterFor(src), autoplay = true, preload = 'metadata', ...attrs } = Astro.props;
 ---
 
 <video
@@ -20,6 +20,6 @@ const { src, poster = posterFor(src), autoplay = true, ...attrs } = Astro.props;
 	muted
 	loop
 	playsinline
-	preload="metadata"
+	preload={preload}
 	{...attrs}
 ></video>

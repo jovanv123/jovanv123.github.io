@@ -1,18 +1,15 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Section from '../components/Section.astro';
 import VideoLoop from '../components/VideoLoop.astro';
+import { getProjects } from '../lib/projects';
 import { formatDate, getSite, resolveHref, socialLinks } from '../lib/site';
 
 const site = await getSite();
 const { profile, hero, focus, experience, education, skills, contact } = site;
 const socials = socialLinks(site);
 
-// Featured first, then newest.
-const projects = (await getCollection('projects')).sort(
-	(a, b) => Number(b.data.featured) - Number(a.data.featured) || b.data.year - a.data.year,
-);
+const projects = await getProjects();
 
 // Contact rows: label | value, hidden when empty.
 const contactRows = [
@@ -44,15 +41,40 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</div>
 	</section>
 
-	{hero.video && (
-		<figure class="border-t border-border py-20 md:py-28">
-			<VideoLoop src={hero.video.src} autoplay={false} class="aspect-video w-full object-cover" data-featured aria-label={hero.video.caption} />
-			<figcaption class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
-				<span class="meta">{hero.video.caption}</span>
-				<a href={resolveHref(hero.video.link.href)} class="text-sm text-muted">{hero.video.link.label}</a>
-			</figcaption>
-		</figure>
-	)}
+	<Section id="projects" heading={site.projects.heading}>
+		<ol class="divide-y divide-border">
+			{projects.map(({ data }) => (
+				<li>
+					<a href={`/projects/${data.slug}`} class="group grid gap-x-8 gap-y-3 py-8 text-text no-underline hover:text-text lg:grid-cols-12">
+						<p class="font-mono text-sm text-muted lg:col-span-1">{data.year}</p>
+						<div class="lg:col-span-3">
+							<h3 class="text-xl tracking-tight group-hover:text-accent group-focus-visible:text-accent md:text-2xl">{data.title}</h3>
+							<p class="mt-1 text-sm text-muted">{data.context}</p>
+						</div>
+						<p class="text-sm lg:col-span-2">{data.result}</p>
+						<ul class="meta flex flex-wrap content-start gap-x-3 gap-y-1 lg:col-span-2" aria-label="Tags">
+							{data.tags.map((tag) => <li>{tag}</li>)}
+						</ul>
+						<div class:list={[data.media ? 'flex' : 'hidden lg:flex', 'items-center gap-6 lg:col-span-4 lg:justify-end']}>
+							{data.media && (
+								<VideoLoop
+									src={data.media}
+									autoplay={false}
+									preload="none"
+									class="aspect-video w-60 object-cover"
+									data-thumb
+									aria-hidden="true"
+								/>
+							)}
+							<span
+								class="hidden -translate-x-2 text-xl text-accent opacity-0 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 motion-safe:transition lg:inline"
+								aria-hidden="true">→</span>
+						</div>
+					</a>
+				</li>
+			))}
+		</ol>
+	</Section>
 
 	<Section id="focus" heading={focus.heading}>
 		<ul class="divide-y divide-border">
@@ -67,38 +89,6 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 				</li>
 			))}
 		</ul>
-	</Section>
-
-	<Section id="projects" heading={site.projects.heading}>
-		<ol class="divide-y divide-border">
-			{projects.map(({ data }) => (
-				<li class={row}>
-					<p class="font-mono text-sm text-muted md:col-span-1">{data.year}</p>
-					<div class="md:col-span-4">
-						<h3 class="text-xl tracking-tight md:text-2xl">
-							<a href={`/projects/${data.slug}`} class="no-underline">{data.title}</a>
-						</h3>
-						<p class="mt-1 text-sm text-muted">{data.context}</p>
-					</div>
-					<p class="text-sm md:col-span-2">{data.result}</p>
-					<ul class="meta flex flex-wrap content-start gap-x-3 gap-y-1 md:col-span-2" aria-label="Tags">
-						{data.tags.map((tag) => <li>{tag}</li>)}
-					</ul>
-					{data.media && (
-						<div class="md:col-span-3 md:justify-self-end">
-							<VideoLoop
-								src={data.media}
-								autoplay={false}
-								preload="none"
-								class="aspect-video w-60 object-cover"
-								data-thumb
-								aria-hidden="true"
-							/>
-						</div>
-					)}
-				</li>
-			))}
-		</ol>
 	</Section>
 
 	<Section id="experience" heading={experience.heading}>
@@ -166,20 +156,13 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 </BaseLayout>
 
 <script>
-	// Posters only under prefers-reduced-motion. The featured loop is the one autoplaying
-	// video; thumbnails (preload="none") load and play on desktop hover, reset on leave.
+	// Thumbnails (preload="none") load and play on desktop hover and reset on leave.
+	// Under prefers-reduced-motion they stay posters.
 	const still = window.matchMedia('(prefers-reduced-motion: reduce)');
-	const desktop = window.matchMedia('(hover: hover) and (min-width: 48rem)');
-
-	const featured = document.querySelector<HTMLVideoElement>('video[data-featured]');
-	if (featured) {
-		const sync = () => (still.matches ? featured.pause() : featured.play().catch(() => {}));
-		sync();
-		still.addEventListener('change', sync);
-	}
+	const desktop = window.matchMedia('(hover: hover) and (min-width: 64rem)');
 
 	for (const video of document.querySelectorAll<HTMLVideoElement>('video[data-thumb]')) {
-		const row = video.closest('li')!;
+		const row = video.closest('a')!;
 		row.addEventListener('mouseenter', () => {
 			if (desktop.matches && !still.matches) video.play().catch(() => {});
 		});

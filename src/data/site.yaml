@@ -23,6 +23,8 @@ theme:
   layout: "single-page"           # home is one page...
   project_pages: true             # ...each project gets /projects/<slug>
   max_width: "1100px"
+  column_width: "800px"           # project page column: header, media, figures
+  text_width: "680px"             # project page body text
   border_radius: "0"              # sharp everywhere
   borders: "1px hairline"         # rules between sections/items, no boxes
   shadows: false
@@ -79,11 +81,6 @@ hero:
   rule: true                      # hairline under headline
   lede: "From multi-camera perception and force-controlled insertion on industrial arms to bare-metal control loops on competition robots."
   link: { label: "Get in touch →", href: "#contact" }   # text link, not a button
-  # Featured loop under the hero; the only autoplaying video on the home page.
-  video:
-    src: "media/insert_real.mp4"
-    caption: "Autonomous SFP insertion · real cell · xArm7"
-    link: { label: "Case study →", href: "projects/cable-insertion" }
 
 # Page copy draft from portfolio.md — not rendered yet (not in the home section order).
 about:

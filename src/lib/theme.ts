@@ -17,6 +17,8 @@ export function themeCss({ theme, colors, typography }: Site) {
 		`:root {`,
 		paletteVars(colors),
 		`--site-max-width: ${theme.max_width};`,
+		`--site-column-width: ${theme.column_width};`,
+		`--site-text-width: ${theme.text_width};`,
 		`--site-base-size: ${typography.base_size};`,
 		`--site-line-height: ${typography.line_height};`,
 		`--site-heading-weight: ${typography.heading_weight};`,

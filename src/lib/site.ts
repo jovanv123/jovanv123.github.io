@@ -31,6 +31,8 @@ export const siteSchema = z.object({
 		layout: z.string(),
 		project_pages: z.boolean(),
 		max_width: z.string(),
+		column_width: z.string(),
+		text_width: z.string(),
 		border_radius: z.string(),
 		borders: z.string(),
 		shadows: z.boolean(),
@@ -66,7 +68,6 @@ export const siteSchema = z.object({
 		rule: z.boolean(),
 		lede: z.string(),
 		link,
-		video: z.object({ src: z.string(), caption: z.string(), link }).optional(),
 	}),
 	about: z.object({ heading, text: z.string(), todo: z.string().optional() }),
 	focus: z.object({

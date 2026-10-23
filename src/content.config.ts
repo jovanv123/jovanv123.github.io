@@ -12,6 +12,7 @@ const projects = defineCollection({
 			title: z.string(),
 			slug: z.string(),
 			context: z.string(),
+			role: z.string().optional(),
 			year: z.number().int(),
 			result: z.string().optional(),
 			summary: z.string(),

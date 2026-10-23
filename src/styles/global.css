@@ -32,6 +32,8 @@
 	--font-weight-heading: var(--site-heading-weight);
 
 	--container-content: var(--site-max-width);
+	--container-column: var(--site-column-width);
+	--container-text: var(--site-text-width);
 }
 
 @layer base {
@@ -69,23 +71,36 @@
 	@apply font-mono text-xs tracking-wider text-muted uppercase;
 }
 
-/* MDX case-study body: each h2 opens a section with a hairline rule. */
+/*
+ * Project page: one centred column (header, media, figures) with body text
+ * capped narrower. Section headings carry a mono counter: 01, 02, ...
+ */
 @layer components {
-	.case-study {
-		@apply max-w-3xl pb-16 md:pb-20;
+	.project {
+		@apply mx-auto max-w-column;
+		counter-reset: section;
+	}
 
-		& h2 {
-			@apply mt-16 border-t border-border pt-16 text-2xl tracking-tight md:mt-20 md:pt-20 md:text-3xl;
+	.section-heading,
+	.case-study h2 {
+		@apply mt-16 border-t border-border pt-16 text-2xl tracking-tight md:mt-20 md:pt-20 md:text-3xl;
+		counter-increment: section;
+
+		&::before {
+			@apply mr-4 font-mono text-sm text-muted;
+			content: counter(section, decimal-leading-zero);
 		}
+	}
 
+	.case-study {
 		& h3 {
-			@apply mt-10 text-xl tracking-tight;
+			@apply mt-10 max-w-text text-xl tracking-tight;
 		}
 
 		& p,
 		& ul,
 		& ol {
-			@apply mt-6 text-lg leading-relaxed;
+			@apply mt-6 max-w-text text-lg leading-relaxed;
 		}
 
 		& ul {

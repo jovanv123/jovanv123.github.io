@@ -39,6 +39,8 @@
 	/* Hero headline: text-hero. */
 	--text-hero: clamp(2.25rem, 4.5vw, 3.75rem);
 	--text-hero--line-height: 1.1;
+	/* Chips on video (carousel speed label): text-2xs. */
+	--text-2xs: 0.6875rem;
 
 	--container-content: var(--site-max-width);
 	--container-column: var(--site-column-width);
@@ -242,6 +244,78 @@
 
 		& code {
 			@apply font-mono text-sm;
+		}
+	}
+}
+
+/*
+ * Project video carousel. The stage is a fixed-height size container on a
+ * surface letterbox; the video scales down to fit it whole (no crop), so the
+ * speed chip can sit in the video's own corner. Below md the stage is square
+ * and the buttons move down beside the counter. Captions are stacked in one
+ * grid cell: the tallest sets the height and switching slides crossfades.
+ */
+@layer components {
+	.carousel {
+		@apply grid items-center gap-4;
+		grid-template-columns: auto 1fr auto;
+	}
+
+	.carousel-stage {
+		@apply col-span-3 grid aspect-square place-items-center border border-border bg-surface md:col-span-1 md:col-start-2 md:row-start-1 md:aspect-auto md:h-112;
+		container-type: size;
+		touch-action: pan-y;
+	}
+
+	.carousel-slide {
+		@apply relative;
+
+		& video {
+			max-width: 100cqw;
+			max-height: 100cqh;
+		}
+	}
+
+	.carousel-speed {
+		@apply absolute right-2 bottom-2 bg-inverse/60 px-1.5 py-0.5 font-mono text-2xs text-inverse-text;
+	}
+
+	.carousel-button {
+		@apply row-start-2 flex size-10 items-center justify-center border border-border font-mono text-text hover:border-accent-hover hover:text-accent-hover focus-visible:border-accent md:row-start-1;
+	}
+
+	.carousel-prev {
+		@apply col-start-1;
+	}
+
+	.carousel-next {
+		@apply col-start-3;
+	}
+
+	.carousel-counter {
+		@apply col-start-2 row-start-2 text-center;
+	}
+
+	.carousel-caption {
+		@apply col-span-3 grid md:col-span-1 md:col-start-2;
+
+		& > * {
+			grid-area: 1 / 1;
+			opacity: 0;
+			visibility: hidden;
+			transition: opacity 150ms, visibility 0s 150ms;
+		}
+
+		& > .is-active {
+			opacity: 1;
+			visibility: visible;
+			transition: opacity 150ms;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.carousel-caption > * {
+			transition: none;
 		}
 	}
 }

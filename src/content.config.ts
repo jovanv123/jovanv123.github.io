@@ -17,11 +17,20 @@ const projects = defineCollection({
 			result: z.string().optional(),
 			summary: z.string(),
 			cover: figure.omit({ caption: true }).optional(),
-			// Hero video loop in public/, e.g. "media/<slug>.mp4". Poster is the .jpg next to it.
+			// Video loop in public/, e.g. "media/<slug>.mp4": the card's hover preview, and the
+			// project page hero when there are no `videos`. Poster is the .jpg next to it.
 			media: z.string().optional(),
-			// Extra loops shown in the case study via <VideoCompare items={frontmatter.videos} />.
+			// Project page video carousel (replaces the hero loop). The first poster is also the card thumbnail.
 			videos: z
-				.array(z.object({ src: z.string(), poster: z.string().optional(), caption: z.string() }))
+				.array(
+					z.object({
+						src: z.string(),
+						poster: z.string().optional(),
+						title: z.string(),
+						text: z.string(),
+						speed: z.string().optional(),
+					}),
+				)
 				.default([]),
 			gallery: z.array(figure).default([]),
 			tags: z.array(z.string()),

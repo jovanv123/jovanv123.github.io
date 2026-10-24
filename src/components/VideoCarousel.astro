@@ -1,0 +1,91 @@
+---
+import VideoLoop from './VideoLoop.astro';
+
+interface Props {
+	/** The project's `videos` frontmatter. */
+	items: { src: string; poster?: string; title: string; text: string; speed?: string }[];
+}
+
+// One video at a time, shown whole on a letterboxed stage. Only the active
+// slide loads and plays. Buttons flank the stage from md up and sit beside
+// the counter below it. Styles live in global.css (.carousel).
+const { items } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<section class="carousel" data-carousel tabindex="0" aria-roledescription="carousel" aria-label="Project videos">
+	<div class="carousel-stage" data-stage>
+		{items.map((item, i) => (
+			<figure class="carousel-slide" hidden={i > 0} data-slide>
+				<VideoLoop src={item.src} poster={item.poster} autoplay={i === 0} preload={i === 0 ? 'metadata' : 'none'} aria-label={item.title} />
+				{item.speed && <span class="carousel-speed">{item.speed} speed</span>}
+			</figure>
+		))}
+	</div>
+	<button type="button" class="carousel-button carousel-prev" aria-label="Previous video" data-prev>←</button>
+	<button type="button" class="carousel-button carousel-next" aria-label="Next video" data-next>→</button>
+	<p class="carousel-counter meta"><span data-index>01</span> / {pad(items.length)}</p>
+	<div class="carousel-caption" aria-live="polite">
+		{items.map((item, i) => (
+			<div class:list={['carousel-text', i === 0 && 'is-active']} data-caption>
+				<p class="font-mono text-sm">{item.title}</p>
+				<p class="mt-2 text-muted">{item.text}</p>
+			</div>
+		))}
+	</div>
+</section>
+
+<script>
+	// Prev/next with wraparound; arrow keys while the carousel is focused or in view; swipe on touch.
+	for (const root of document.querySelectorAll<HTMLElement>('[data-carousel]')) {
+		const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
+		const captions = [...root.querySelectorAll<HTMLElement>('[data-caption]')];
+		const counter = root.querySelector('[data-index]')!;
+		const stage = root.querySelector<HTMLElement>('[data-stage]')!;
+		let current = 0;
+		let inView = false;
+
+		const show = (index: number) => {
+			current = (index + slides.length) % slides.length;
+			slides.forEach((slide, i) => {
+				const video = slide.querySelector('video')!;
+				slide.hidden = i !== current;
+				if (i === current) {
+					video.preload = 'metadata';
+					video.play().catch(() => {});
+				} else if (!video.paused || video.currentTime > 0) {
+					video.pause();
+					video.currentTime = 0;
+				}
+			});
+			captions.forEach((caption, i) => caption.classList.toggle('is-active', i === current));
+			counter.textContent = String(current + 1).padStart(2, '0');
+		};
+
+		root.querySelector('[data-prev]')!.addEventListener('click', () => show(current - 1));
+		root.querySelector('[data-next]')!.addEventListener('click', () => show(current + 1));
+
+		new IntersectionObserver(([entry]) => (inView = entry.isIntersecting), { threshold: 0.5 }).observe(root);
+		document.addEventListener('keydown', (event) => {
+			if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+			if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+			const active = document.activeElement;
+			const editing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || (active instanceof HTMLElement && active.isContentEditable);
+			if (!root.contains(active) && (!inView || editing)) return;
+			event.preventDefault();
+			show(current + (event.key === 'ArrowRight' ? 1 : -1));
+		});
+
+		let startX = 0;
+		let startY = 0;
+		stage.addEventListener('touchstart', (event) => {
+			startX = event.touches[0].clientX;
+			startY = event.touches[0].clientY;
+		}, { passive: true });
+		stage.addEventListener('touchend', (event) => {
+			const dx = event.changedTouches[0].clientX - startX;
+			const dy = event.changedTouches[0].clientY - startY;
+			if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) show(current + (dx < 0 ? 1 : -1));
+		}, { passive: true });
+	}
+</script>

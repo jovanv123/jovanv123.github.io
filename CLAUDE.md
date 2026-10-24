@@ -9,8 +9,8 @@ Astro, Tailwind, MDX, astro-icon (`@iconify-json/simple-icons` for brands, `@ico
   - `src/data/site.yaml`: site, theme, colors, nav, profile (greeting + name + tagline + status make the hero; photo is a file in `src/assets/`), focus (kept, not rendered), featured (aria label only), projects, experience, education, skills (groups: name, `icon`, items as label or `{ label, icon? }`; icons are iconify names like `simple-icons:ros`, `tabler:cpu`), socials, footer
   - `src/content/projects/<slug>/index.mdx`: one folder per project; frontmatter from `projects.items`, body from the case-study sections
   - Project images (cover, gallery) are colocated in the project folder and referenced relatively (`./cover.jpg`). They go through the `image()` schema helper and render with `<Image>` from `astro:assets`, never `<img>` or `public/`.
-  - Videos stay in `public/media/` with a same-name `.jpg` poster next to each. `media` is the hero loop (`media/<name>.mp4`); `videos` holds extra loops shown in the case study with `<VideoCompare items={frontmatter.videos} />`.
-- Project schema (zod): title, slug, context, year, result?, summary, role?, cover? `{ src: image(), alt }`, media?, videos[] `{ src, poster?, caption }` (default []), gallery[] `{ src: image(), alt, caption? }` (default []), tags[], repo_url?, paper_url?, featured.
+  - Videos stay in `public/media/` with a same-name `.jpg` poster next to each. `media` (`media/<name>.mp4`) is the home card's hover preview and the project page hero when there are no `videos`; `videos` (`{ src, poster?, title, text, speed? }`, edited in the MDX frontmatter) is the project page video carousel, and its first poster is the card thumbnail.
+- Project schema (zod): title, slug, context, year, result?, summary, role?, cover? `{ src: image(), alt }`, media?, videos[] `{ src, poster?, title, text, speed? }` (default []), gallery[] `{ src: image(), alt, caption? }` (default []), tags[], repo_url?, paper_url?, featured.
 
 ## Pages
 - Home (single page), each section labeled in mono (`01 — Projects`) over a hairline, hairlines between sections, ~112px between sections on desktop and ~64px on mobile (`py-14` / `py-8`):
@@ -21,7 +21,8 @@ Astro, Tailwind, MDX, astro-icon (`@iconify-json/simple-icons` for brands, `@ico
   - 03 Technical skills: cards 4/2/1 per row (desktop/tablet/mobile): group name, then one row per item: small logo + label in muted text. Logos are simple-icons brands, or a generic tabler glyph where a tool has none. Icons monochrome near-black, accent on card hover with the border. Hairline border, no radius, no shadow.
   - 04 Education (`EducationTimeline`, constrained to `theme.narrow_width` 720px): vertical line on the left with a square node per entry, most recent on top. Entry: mono date range in accent, degree (semibold), school, muted note. The faint dashed hairline fills with solid accent as the section scrolls (CSS `animation-timeline` view timelines; JS fallback sets `--timeline-progress` / `.is-on` in Firefox/Safari). A node fills when the line reaches it; the current entry (`end: present`) is always filled with a subtle pulse ring. Reduced motion: fully drawn, no pulse.
   - 05 Contact: large closing line (`contact.message`, "Let’s build robots."), the email as a big mailto: link, then GitHub · LinkedIn · CV as text links. Anything empty is left out.
-- `/projects/[slug]`: one centred column (`theme.column_width`, 800px), body text capped at `theme.text_width` (680px). ← Work breadcrumb → title → mono context → hairline → Year · Role · Result · Stack row → 16:9 media loop (cover alone if no video) → summary → numbered sections (01 Problem …) → Gallery → Links (only if repo/paper) → hairline → Next project →
+- `/projects/[slug]`: one centred column (`theme.column_width`, 800px), body text capped at `theme.text_width` (680px). ← Work breadcrumb → title → mono context → hairline → Year · Role · Result · Stack row → video carousel if `videos`, else 16:9 media loop, else cover → summary → numbered sections (01 Problem …) → Gallery → Links (only if repo/paper) → hairline → Next project →
+  - Video carousel (`VideoCarousel`, vanilla TS): one video at a time, shown whole (contain, no crop) in a fixed-height stage (`h-112`, square below md) with a `surface` letterbox and hairline border; mono `<speed> speed` chip (white on 60% black, 11px) in the video's bottom-right corner. `autoplay muted loop playsinline preload="metadata"`; only the active slide loads and plays. Thin outlined square ← / → buttons (accent on hover) flank the stage (beside the counter below md), mono `01 / 03` counter below, wraparound; arrow keys when focused or in view; swipe on touch. Caption below: mono title + description, 150 ms crossfade, height of the tallest caption, `aria-live="polite"`; the title is the video's aria-label.
   - Gallery: full-width images stacked vertically, hairlines between, mono caption below each. Never a grid.
 
 ## Design
@@ -40,7 +41,7 @@ Astro, Tailwind, MDX, astro-icon (`@iconify-json/simple-icons` for brands, `@ico
   - any border-radius > 0
   - emoji, colored or multicolor icons, bordered skill chips, progress bars (icons only as monochrome logos/glyphs in the skill cards)
   - centered hero, circular photo, button CTAs (text links only)
-  - hover scale; the only motion is the hero robot, hover video loops and the scroll-drawn education timeline
+  - hover scale; the only motion is the hero robot, video loops and the scroll-drawn education timeline
   - from the structure reference (zachjordan.io): green, rounded corners, thick black borders, emoji, icon cards
 
 ## Rules

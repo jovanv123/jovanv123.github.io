@@ -4,13 +4,13 @@ slug: "eurobot"
 context: "Navigation, control & strategy · Eurobot competition"
 role: "Software lead"
 year: 2026
-result: "Software lead"
-summary: "Software lead for two mirrored differential-drive robots. STM32H7 low-level control in C — 1 kHz PID and odometry, trapezoidal velocity profiles, concurrent FSMs — with a Raspberry Pi 5 strategy and ArUco vision layer over UART. Previous season: trained the game-element recognition model for dynamic strategy."
+result: "Own control stack, from scratch"
+summary: "Wrote the robots’ entire low-level control stack from scratch in C on an STM32H7: 1 kHz PID and encoder odometry, trapezoidal motion profiles, actuator drivers and the behaviour state machines. Integrated it over UART with a ROS 2 high-level layer on a Raspberry Pi 5 running ArUco-based perception and match strategy."
 media: "media/eurobot.mp4"
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
-tags: ["STM32H7", "C", "Raspberry Pi", "OpenCV", "FSM"]
+tags: ["C", "STM32H7", "ROS 2", "Raspberry Pi", "OpenCV", "Python"]
 # repo_url:
 featured: true
 ---
@@ -25,7 +25,13 @@ TODO — control architecture diagram (Mermaid), FSM design.
 
 ## My contribution
 
-Software lead.
+- **The low-level control stack, written from scratch, and its integration with the
+  perception layer.** All STM32H7 firmware in C: 1 kHz PID and encoder odometry,
+  trapezoidal motion profiles, actuator drivers and the behaviour state machines,
+  connected over UART to the ROS 2 high-level layer on the Raspberry Pi 5 that runs
+  ArUco-based perception and match strategy.
+- Software lead: the software architecture across both robots.
+- Previous season: trained the game-element recognition model for dynamic strategy.
 
 ## Results
 

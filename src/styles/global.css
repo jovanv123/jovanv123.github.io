@@ -249,31 +249,38 @@
 }
 
 /*
- * Project video carousel. The stage is a fixed-height size container on a
- * surface letterbox; the video scales down to fit it whole (no crop), so the
- * speed chip can sit in the video's own corner. Below md the stage is square
- * and the buttons move down beside the counter. Captions are stacked in one
- * grid cell: the tallest sets the height and switching slides crossfades.
+ * Project videos are never cropped. A video stage is a fixed-height size
+ * container (square below md) on a surface letterbox; the video scales down to
+ * fit it whole, so anything pinned to the video (the carousel's speed chip)
+ * sits in its own corner.
+ *
+ * Carousel: below md the buttons move down beside the counter. Captions are
+ * stacked in one grid cell: the tallest sets the height and switching slides
+ * crossfades.
  */
 @layer components {
+	.video-stage {
+		@apply grid aspect-square place-items-center border border-border bg-surface md:aspect-auto md:h-112;
+		container-type: size;
+
+		& video {
+			max-width: 100cqw;
+			max-height: 100cqh;
+		}
+	}
+
 	.carousel {
 		@apply grid items-center gap-4;
 		grid-template-columns: auto 1fr auto;
 	}
 
 	.carousel-stage {
-		@apply col-span-3 grid aspect-square place-items-center border border-border bg-surface md:col-span-1 md:col-start-2 md:row-start-1 md:aspect-auto md:h-112;
-		container-type: size;
+		@apply col-span-3 md:col-span-1 md:col-start-2 md:row-start-1;
 		touch-action: pan-y;
 	}
 
 	.carousel-slide {
 		@apply relative;
-
-		& video {
-			max-width: 100cqw;
-			max-height: 100cqh;
-		}
 	}
 
 	.carousel-speed {

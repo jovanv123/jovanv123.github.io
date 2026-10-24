@@ -14,7 +14,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
 <section class="carousel" data-carousel tabindex="0" aria-roledescription="carousel" aria-label="Project videos">
-	<div class="carousel-stage" data-stage>
+	<div class="video-stage carousel-stage" data-stage>
 		{items.map((item, i) => (
 			<figure class="carousel-slide" hidden={i > 0} data-slide>
 				<VideoLoop src={item.src} poster={item.poster} autoplay={i === 0} preload={i === 0 ? 'metadata' : 'none'} aria-label={item.title} />

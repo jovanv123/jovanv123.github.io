@@ -16,11 +16,9 @@ const socials = socialLinks(site);
 
 const projects = await getProjects();
 
-// Hero photos from src/assets/: B&W by default, color crossfades in on hover. A framed placeholder renders until they exist.
+// Hero photo from src/assets/<profile.photo>; a framed placeholder renders until the file exists.
 const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/*.{jpg,jpeg,png,webp}', { eager: true });
-const asset = (name: string) => (name ? photos[`../assets/${name}`]?.default : undefined);
-const photo = asset(profile.photo.bw);
-const photoColor = asset(profile.photo.color);
+const photo = profile.photo ? photos[`../assets/${profile.photo}`]?.default : undefined;
 
 // Contact: closing line, email, then GitHub · LinkedIn · CV; anything empty is left out.
 const email = contact.show_email ? profile.email : '';
@@ -52,20 +50,9 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 			</div>
 			<figure class="-order-1 w-full max-w-photo md:order-2 md:col-span-5 md:justify-self-end" data-nogo>
 				<p class="meta mb-2">Fig. 0</p>
-				<div class="group relative aspect-square border border-border bg-background">
+				<div class="aspect-square border border-border bg-background">
 					{photo ? (
-						<>
-							<Image src={photo} alt={profile.name} widths={[280, 560]} sizes="280px" class="size-full object-cover" loading="eager" />
-							{photoColor && (
-								<Image
-									src={photoColor}
-									alt=""
-									widths={[280, 560]}
-									sizes="280px"
-									class="absolute inset-0 size-full object-cover opacity-0 group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-300"
-								/>
-							)}
-						</>
+						<Image src={photo} alt={profile.name} widths={[280, 560]} sizes="280px" class="size-full object-cover" loading="eager" />
 					) : (
 						<div class="meta flex size-full items-center justify-center">Photo</div>
 					)}

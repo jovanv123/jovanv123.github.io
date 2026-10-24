@@ -46,7 +46,14 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const UNKNOWN = 2; // A* cost multiplier for unknown cells
 	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
 	const MIN_LEG = 600; // mm: frontiers closer than this are only used when nothing farther is left
-	const SCALE = 1.5, PAD = 52, BUFFER = 12, EDGE = 48; // robot size; px: no-go beyond each element (body + label + gap), planning buffer, hero inset
+	// Robot footprint on screen: body ±18 px wide, wheels ±21 px across, scaled. The detection box
+	// is the axis-aligned box around the rotated footprint plus BOX_PAD, at most SIDE px from the
+	// centre; its label sits above it, so the top reaches UP px. No-go keeps that whole box plus
+	// GAP off every element and inside the hero; BUFFER px more is avoided when planning.
+	const SCALE = 1.5, BOX_PAD = 3, GAP = 6, BUFFER = 10;
+	// Largest drawn box half-size plus a 2 px hard gap, and its top including the label.
+	const VIS = Math.hypot(18, 21) * SCALE + BOX_PAD + 2, VUP = VIS + 13;
+	const SIDE = Math.ceil(VIS + GAP), UP = SIDE + 13;
 	const CORNER = Math.PI / 6, V_CORNER = 100; // bends sharper than 30° are driven to, at ≤ 100 mm/s
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
 	const BITS = ['0110', '0010', '0111', '0001'];
@@ -63,7 +70,8 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	let g = new Float32Array(0), fv = g;
 	let came = new Int32Array(0), heap = came, hpos = came, queue = came, cells = came;
 	let seen = new Uint32Array(0), closed = seen;
-	let run = 0, hn = 0, qn = 0, known = 0, mappable = 0, decayed = 0;
+	let run = 0, hn = 0, qn = 0, known = 0, mappable = 0, decayed = 0, stuck = 0;
+	let boxes = new Float64Array(0); // no-go elements as left, top, right, bottom in canvas px
 
 	// Robot, path and sensor state.
 	let x = 0, y = 0, th = Math.PI, v = 0, om = 0;
@@ -372,8 +380,15 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		scanY = y;
 	}
 
-	// The robot centre must stay on the field and out of no-go cells.
-	const collides = (px: number, py: number) => px < 0 || px >= W || py < 0 || py >= H || stat[cellAt(px, py)] & 1;
+	// Exact check before every move: the largest drawn box (and label) at this pose must stay
+	// inside the hero and off every element, whatever cell the centre is in.
+	function collides(px: number, py: number) {
+		const X = px * sx, Y = h - py * sy;
+		if (X < VIS || X > w - VIS || Y < VUP || Y > h - VIS) return true;
+		for (let i = 0; i < boxes.length; i += 4)
+			if (X + VIS > boxes[i] && X - VIS < boxes[i + 2] && Y + VIS > boxes[i + 1] && Y - VUP < boxes[i + 3]) return true;
+		return false;
+	}
 
 	// One 10 ms step: sense at 10 Hz, replan on demand (≤ 10 Hz) or every 1 s, pure pursuit, unicycle kinematics.
 	function tick() {
@@ -432,10 +447,13 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		v = vt > v ? Math.min(vt, v + A_MAX * DT) : Math.max(vt, v - A_MAX * DT);
 		om = wt;
 		const nx = x + v * Math.cos(th) * DT, ny = y + v * Math.sin(th) * DT;
+		// Blocked: stop (turning is safe, the box limits hold at any heading) and replan; give the
+		// goal up if it stays blocked.
 		if (collides(nx, ny)) {
-			v = om = 0;
+			v = 0;
 			needReplan = hasGoal;
-		} else (x = nx), (y = ny);
+			if ((stuck += DT) > 1.5 && hasGoal) (stuck = 0), arrive();
+		} else (x = nx), (y = ny), (stuck = 0);
 		th = wrap(th + om * DT);
 	}
 
@@ -465,14 +483,14 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 			}
 		ctx.restore();
 
-		// Camera detection: axis-aligned box around the rotated marker.
-		const s = Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)), half = (10.5 * s + 4) * SCALE;
-		const bx = px - 1.5 * SCALE * Math.cos(a), by = py - 1.5 * SCALE * Math.sin(a);
+		// Camera detection: axis-aligned box around the whole rotated robot.
+		const c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+		const hx = (18 * c + 21 * s) * SCALE + BOX_PAD, hy = (18 * s + 21 * c) * SCALE + BOX_PAD;
 		ctx.strokeStyle = ctx.fillStyle = accent;
 		ctx.setLineDash(DASH);
-		ctx.strokeRect(bx - half, by - half, 2 * half, 2 * half);
+		ctx.strokeRect(px - hx, py - hy, 2 * hx, 2 * hy);
 		ctx.setLineDash(SOLID);
-		ctx.fillText('aruco id=7', Math.min(bx - half, w - 59), by - half - 4);
+		ctx.fillText('aruco id=7', Math.min(px - hx, w - 59), py - hy - 4);
 	}
 
 	function draw() {
@@ -584,6 +602,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		const key = [c.width, c.height, ...rects.flatMap((r) => [r.x, r.y, r.width, r.height])].map(Math.round).join();
 		if (key === layout) return;
 		layout = key;
+		boxes = Float64Array.from(rects.flatMap((r) => [r.left, r.top, r.right, r.bottom]));
 		// Hidden below md: nothing to build or run until the canvas has a size.
 		if (!canvas.clientWidth) {
 			parked = true;
@@ -607,11 +626,12 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		mappable = 0;
 		for (let k = 0; k < N; k++) {
 			const X = cx(k) * sx, Y = h - cy(k) * sy;
-			let s = X < EDGE || X > w - EDGE || Y < EDGE || Y > h - EDGE ? 2 : 0;
+			// The robot's box [X ± SIDE] × [Y - UP, Y + SIDE] must stay inside the hero and off every element.
+			let s = X < SIDE || X > w - SIDE || Y < UP || Y > h - SIDE ? 2 : 0;
 			for (const r of rects) {
-				const d = Math.hypot(Math.max(r.left - X, 0, X - r.right), Math.max(r.top - Y, 0, Y - r.bottom)); // px to the element
-				if (d < PAD) s |= 1;
-				else if (d < PAD + BUFFER) s |= 4;
+				const b = BUFFER;
+				if (X + SIDE > r.left && X - SIDE < r.right && Y + SIDE > r.top && Y - UP < r.bottom) s |= 1;
+				else if (X + SIDE + b > r.left && X - SIDE - b < r.right && Y + SIDE + b > r.top && Y - UP - b < r.bottom) s |= 4;
 			}
 			stat[k] = s & 1 ? 1 : s;
 			if (!(s & 1)) mappable++;

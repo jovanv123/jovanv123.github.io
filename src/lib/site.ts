@@ -64,7 +64,7 @@ export const siteSchema = z.object({
 		greeting: z.string(),
 		tagline: z.string(),
 		location: z.string(),
-		photo: z.object({ bw: z.string(), color: z.string() }),
+		photo: z.string(),
 		email: z.string(),
 		cv: z.string(),
 		status: z.string(),

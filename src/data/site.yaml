@@ -73,9 +73,9 @@ nav:
 # ------------------------------------------------------------
 profile:
   name: "Jovan Vasić"
-  role: "Robotics / AI Engineer"
+  role: "Robotics / Mechatronics engineer"
   greeting: "Hey, I’m"            # hero: "<greeting> <name>." with the name in accent
-  tagline: "Mechatronics engineer building robots that see and manipulate. MSc MRBE @ TUM."
+  tagline: "Robotics engineer building robots that see and manipulate. MSc MRBE @ TUM."
   location: "Munich, DE"
   photo: "me-color.jpg"           # in src/assets/, square crop; a framed placeholder shows until it exists
   email: ""                       # TODO
@@ -86,10 +86,8 @@ profile:
 about:
   heading: "About"
   text: >-
-    Mechatronics engineer, now doing an MSc in Mechatronics, Robotics and
-    Biomedical Engineering at TUM. My work sits between perception and
-    control: getting a robot to see a part precisely enough, then handle
-    contact with it reliably.
+    Robotics engineer, now doing an MSc in Mechatronics, Robotics and
+    Biomechanical Engineering at TUM. 
   todo: "One line on what you want to work on next, one human line."
 
 focus:                            # area / description / topics — not rendered (not in the home section order)
@@ -115,29 +113,27 @@ projects:
 experience:
   heading: "Experience"
   items:
-    - role: "Software Lead"
-      company: "Eurobot team, FTN Novi Sad"
+    - role: "Mobile robotics developer"
+      company: "Eurobot competition team, FTN Novi Sad"
       company_url: ""
       start: "2023-09"
       end: "present"
       points:
-        - "2025–: low-level control and full software architecture (STM32 + Raspberry Pi)."
-        - "2024–25: computer vision for game-element recognition and dynamic strategy."
-        - "2023–24: mechanical assembly."
+        - "Development of autonomous mobile robots. From mechanical design to software architecture and control."
     - role: "Embedded Software Intern (Edge AI)"
       company: "RT-RK"
       company_url: ""
       start: "2025-05"
       end: "2025-07"
       points:
-        - "ML model selection and TFLite deployment on ESP32 for a smart thermostat."
+        - "Design and implementation of embedded software for edge AI applications."
     - role: "Computer Vision Intern"
       company: "DunavNET"
       company_url: ""
       start: "2024-08"
       end: "2024-10"
       points:
-        - "TODO: one line on what you built."
+        - ""
 
 education:
   heading: "Education"
@@ -151,7 +147,7 @@ education:
       school: "Faculty of Technical Sciences, University of Novi Sad"
       start: "2021"
       end: "2026"
-      note: "GPA 8.70/10 · Ministry of Education scholarship for gifted students (2022–23)"
+      note: ""
 
 skills:
   heading: "Technical skills"
@@ -187,20 +183,20 @@ skills:
 
 contact:
   heading: "Contact"
-  message: "Let’s build robots."  # large closing line above the email
+  message: ""  # large closing line above the email
   show_form: false                # email link is enough
   show_email: true
 
 socials:
   github:   ""                    # TODO
   linkedin: ""                    # TODO
-  scholar:  ""                    # once the paper is out
+  scholar:  "https://scholar.google.com/citations?hl=sr&user=xulBHuYAAAAJ"                    # once the paper is out
   youtube:  ""                    # optional, for long demo videos
 
 footer:                           # black, multi-column, matches the nav
   columns:
-    - { heading: "About",    text: "Mechatronics engineer. Munich, DE." }
-    - { heading: "Contact",  text: "" }       # email + CV, filled from profile
+    - { heading: "About",    text: "Robotics engineer. Munich, DE." }
+    - { heading: "Contact",  text: "jovavasic097@gmail.com" }       # email + CV, filled from profile
     - { heading: "Elsewhere", text: "" }      # filled from socials
   text: "© 2026 Jovan Vasić"
   show_back_to_top: false

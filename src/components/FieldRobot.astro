@@ -47,13 +47,15 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const UNKNOWN = 2; // A* cost multiplier for unknown cells
 	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
 	const MIN_LEG = 600; // mm: frontiers closer than this are only used when nothing farther is left
+	const PAD = 44, BUFFER = 16; // px: no-go reach beyond each element (robot body and label + gap), planning buffer
+	const CORNER = Math.PI / 6, V_CORNER = 100; // bends sharper than 30° are driven to, at ≤ 100 mm/s
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
 	const BITS = ['0110', '0010', '0111', '0001'];
 	const DI = Int8Array.of(1, -1, 0, 0, 1, 1, -1, -1), DJ = Int8Array.of(0, 0, 1, -1, 1, -1, 1, -1);
 	const DASH = [4, 4], SOLID: number[] = [];
 
 	// Layout and grid. stat: bit 1 = no-go (never mapped), bit 2 = too close to the hero edge,
-	// bit 4 = planning buffer around no-go so pure pursuit corner cuts never reach it.
+	// bit 4 = planning buffer (BUFFER px beyond no-go) so the path keeps clear even when tracking drifts.
 	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, layout = '', parked = true;
 	const CS = 25, NX = W / CS, NY = H / CS, RAYS = 72; // 25 mm cells, 72 rays (5°)
 	let N = 0;
@@ -245,7 +247,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				const c = b * NX + a;
 				if (closed[c] === run || blocked(c, escape)) continue;
 				if (m > 3 && (blocked(j * NX + a, escape) || blocked(b * NX + i, escape))) continue; // no corner cutting
-				const cost = g[k] + (m > 3 ? Math.SQRT2 : 1) * (state[c] ? 1 : UNKNOWN) * (stat[c] ? 4 : 1);
+				const cost = g[k] + (m > 3 ? Math.SQRT2 : 1) * (state[c] ? 1 : UNKNOWN) * (stat[c] ? 12 : 1); // escape the buffer by the shortest way
 				if (seen[c] !== run) {
 					seen[c] = run;
 					g[c] = cost;
@@ -417,14 +419,23 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				}
 				seg++;
 			}
-			// Lookahead point LOOK mm further along the path; remaining length for the profile.
-			let lx = wx[wn - 1], ly = wy[wn - 1], need = LOOK, found = false;
+			// Lookahead point LOOK mm further along the path, but never past a sharp bend: the robot
+			// drives to the corner instead of cutting it towards the content. Remaining and
+			// to-corner lengths feed the speed profile.
+			let lx = wx[wn - 1], ly = wy[wn - 1], need = LOOK, found = false, corner = Infinity;
 			remain = 0;
 			for (let n = seg + 1; n < wn; n++) {
 				const l = Math.hypot(wx[n] - px, wy[n] - py);
 				if (!found && l >= need) (lx = px + ((wx[n] - px) * need) / l), (ly = py + ((wy[n] - py) * need) / l), (found = true);
 				if (!found) need -= l;
 				remain += l;
+				if (n < wn - 1 && corner === Infinity) {
+					const turn = wrap(Math.atan2(wy[n + 1] - wy[n], wx[n + 1] - wx[n]) - Math.atan2(wy[n] - wy[n - 1], wx[n] - wx[n - 1]));
+					if (Math.abs(turn) > CORNER) {
+						corner = remain;
+						if (!found) (lx = wx[n]), (ly = wy[n]), (found = true);
+					}
+				}
 				px = wx[n];
 				py = wy[n];
 			}
@@ -434,7 +445,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				if (Math.abs(alpha) > Math.PI / 3) wt = clamp(3 * alpha, W_MAX); // rotate in place
 				else {
 					const k = (2 * Math.sin(alpha)) / (Math.hypot(lx - x, ly - y) || 1);
-					vt = Math.min(V_MAX, Math.sqrt(2 * A_MAX * remain));
+					vt = Math.min(V_MAX, Math.sqrt(2 * A_MAX * remain), Math.sqrt(2 * A_MAX * corner + V_CORNER * V_CORNER));
 					wt = vt * k;
 					if (Math.abs(wt) > W_MAX) (wt = clamp(wt, W_MAX)), (vt = W_MAX / Math.abs(k));
 				}
@@ -620,22 +631,19 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		gy = step(sy);
 		if (!N) alloc(NX * NY);
 
-		// No-go pad and edge margin in px, from the drawn robot half-size and its label.
-		const half = 21, pad = 36, edge = half + 3;
+		const edge = 24; // px: keeps the drawn robot inside the hero
 
 		mappable = 0;
 		for (let k = 0; k < N; k++) {
 			const X = cx(k) * sx, Y = h - cy(k) * sy;
 			let s = X < edge || X > w - edge || Y < edge || Y > h - edge ? 2 : 0;
-			for (const r of rects) if (X > r.left - pad && X < r.right + pad && Y > r.top - pad && Y < r.bottom + pad) s |= 1;
-			stat[k] = s;
+			for (const r of rects) {
+				const d = Math.hypot(Math.max(r.left - X, 0, X - r.right), Math.max(r.top - Y, 0, Y - r.bottom)); // px to the element
+				if (d < PAD) s |= 1;
+				else if (d < PAD + BUFFER) s |= 4;
+			}
+			stat[k] = s & 1 ? 1 : s;
 			if (!(s & 1)) mappable++;
-		}
-		for (let k = 0; k < N; k++) {
-			if (!(stat[k] & 1)) continue;
-			const i = k % NX, j = (k / NX) | 0;
-			for (let b = Math.max(0, j - 2); b <= Math.min(NY - 1, j + 2); b++)
-				for (let a = Math.max(0, i - 2); a <= Math.min(NX - 1, i + 2); a++) if (!(stat[b * NX + a] & 1)) stat[b * NX + a] |= 4;
 		}
 		// Start in the largest free region, at its cell nearest the bottom-right corner.
 		bad.fill(0);

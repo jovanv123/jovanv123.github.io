@@ -1,0 +1,71 @@
+---
+import { formatDate, type Site } from '../lib/site';
+
+interface Props {
+	/** site.yaml education.items, most recent first. */
+	items: Site['education']['items'];
+}
+
+// Vertical timeline: a dashed hairline that fills with accent as the section scrolls
+// through the viewport; nodes fill when the line reaches them. The current entry
+// (end: present) is always filled and pulses. Styles live in global.css (.timeline).
+const { items } = Astro.props;
+---
+
+<div class="timeline mt-10" data-timeline>
+	<span class="timeline-track" aria-hidden="true"></span>
+	<span class="timeline-fill" aria-hidden="true"></span>
+	<ol class="space-y-12">
+		{items.map((item) => (
+			<li class="relative">
+				<span class:list={['timeline-node', item.end === 'present' && 'is-current']} aria-hidden="true"></span>
+				<p class="font-mono text-sm text-accent">
+					<time datetime={item.start}>{formatDate(item.start)}</time> –{' '}
+					{item.end === 'present' ? item.end : <time datetime={item.end}>{formatDate(item.end)}</time>}
+				</p>
+				<h3 class="mt-2 text-xl font-semibold tracking-tight">{item.degree}</h3>
+				<p class="mt-1">{item.school}</p>
+				{item.note && <p class="mt-3 max-w-text text-muted">{item.note}</p>}
+			</li>
+		))}
+	</ol>
+</div>
+
+<script>
+	// Fallback for browsers without scroll-driven animations (Firefox, Safari):
+	// progress = how far the viewport centre has travelled down the timeline.
+	const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	if (!still && !CSS.supports('animation-timeline: view()')) {
+		for (const timeline of document.querySelectorAll<HTMLElement>('[data-timeline]')) {
+			const nodes = timeline.querySelectorAll<HTMLElement>('.timeline-node');
+			let active = false, queued = false;
+
+			const update = () => {
+				queued = false;
+				const centre = innerHeight / 2;
+				const box = timeline.getBoundingClientRect();
+				const progress = Math.min(1, Math.max(0, (centre - box.top) / box.height));
+				timeline.style.setProperty('--timeline-progress', String(progress));
+				for (const node of nodes) {
+					const r = node.getBoundingClientRect();
+					node.classList.toggle('is-on', r.top + r.height / 2 <= centre);
+				}
+			};
+			const schedule = () => {
+				if (active && !queued) {
+					queued = true;
+					requestAnimationFrame(update);
+				}
+			};
+
+			// Update on enter and on leave, so a fast scroll past still ends fully drawn or empty.
+			new IntersectionObserver(([entry]) => {
+				active = entry.isIntersecting;
+				requestAnimationFrame(update);
+			}).observe(timeline);
+			addEventListener('scroll', schedule, { passive: true });
+			addEventListener('resize', schedule);
+		}
+	}
+</script>

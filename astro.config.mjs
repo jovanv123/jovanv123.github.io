@@ -4,6 +4,7 @@ import { defineConfig, fontProviders } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
+import icon from 'astro-icon';
 
 // https://astro.build/config
 export default defineConfig({
@@ -13,7 +14,8 @@ export default defineConfig({
     plugins: [tailwindcss()]
   },
 
-  integrations: [mdx(), sitemap()],
+  // Icons: simple-icons (brands) and tabler (generic), inlined as SVG at build time.
+  integrations: [mdx(), sitemap(), icon()],
 
   // Families match `typography` in src/data/site.yaml. Downloaded at build time and self-hosted.
   fonts: [

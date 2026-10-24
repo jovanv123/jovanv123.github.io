@@ -79,6 +79,124 @@
 }
 
 /*
+ * Education timeline. A dashed hairline track with an accent fill drawn by
+ * scroll: CSS scroll-driven animations where supported, otherwise the
+ * component's script sets --timeline-progress and toggles .is-on on nodes.
+ * The fill tip and each node meet at the viewport centre.
+ */
+@layer components {
+	.timeline {
+		--timeline-node: 0.75rem;
+		--timeline-x: calc(var(--timeline-node) / 2 - 0.5px);
+		position: relative;
+		padding-left: 2.5rem;
+		view-timeline-name: --timeline;
+	}
+
+	.timeline-track,
+	.timeline-fill {
+		position: absolute;
+		top: 0.5rem;
+		bottom: 0;
+		left: var(--timeline-x);
+		width: 1px;
+	}
+
+	.timeline-track {
+		border-left: 1px dashed var(--color-border);
+	}
+
+	.timeline-fill {
+		background-color: var(--color-accent);
+		transform-origin: top;
+		transform: scaleY(var(--timeline-progress, 0));
+	}
+
+	.timeline-node {
+		position: absolute;
+		top: 0.3rem;
+		left: -2.5rem;
+		width: var(--timeline-node);
+		height: var(--timeline-node);
+		border: 1px solid var(--color-accent);
+		background-color: var(--color-background);
+
+		&.is-on,
+		&.is-current {
+			background-color: var(--color-accent);
+		}
+
+		/* Current entry: a ring that fades in and out. */
+		&.is-current::after {
+			content: '';
+			position: absolute;
+			inset: -0.3rem;
+			border: 1px solid var(--color-accent);
+			animation: timeline-pulse 2.4s ease-out infinite;
+		}
+	}
+
+	@supports (animation-timeline: view()) {
+		.timeline-fill {
+			animation: timeline-fill linear both;
+			animation-timeline: --timeline;
+			animation-range: cover 50vh cover calc(100% - 50vh);
+		}
+
+		.timeline-node:not(.is-current) {
+			animation: timeline-node linear both;
+			animation-timeline: view();
+			animation-range: cover 49% cover 51%;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.timeline .timeline-fill {
+			animation: none;
+			transform: none;
+		}
+
+		.timeline .timeline-node {
+			animation: none;
+			background-color: var(--color-accent);
+
+			&::after {
+				animation: none;
+				opacity: 0;
+			}
+		}
+	}
+}
+
+@keyframes timeline-fill {
+	from {
+		transform: scaleY(0);
+	}
+	to {
+		transform: scaleY(1);
+	}
+}
+
+@keyframes timeline-node {
+	from {
+		background-color: var(--color-background);
+	}
+	to {
+		background-color: var(--color-accent);
+	}
+}
+
+@keyframes timeline-pulse {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	40% {
+		opacity: 0.6;
+	}
+}
+
+/*
  * Project page: one centred column (header, media, figures) with body text
  * capped narrower. Section headings carry a mono counter: 01, 02, ...
  */

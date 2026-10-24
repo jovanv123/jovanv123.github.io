@@ -103,7 +103,14 @@ export const siteSchema = z.object({
 	skills: z.object({
 		heading,
 		display: z.string(),
-		groups: z.array(z.object({ name: z.string(), items: z.array(z.string()) })),
+		groups: z.array(
+			z.object({
+				name: z.string(),
+				/** Iconify name, e.g. "simple-icons:ros" or "tabler:cpu". */
+				icon: z.string(),
+				items: z.array(z.union([z.string(), z.object({ label: z.string(), icon: z.string().optional() })])),
+			}),
+		),
 	}),
 	contact: z.object({
 		heading,

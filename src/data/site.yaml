@@ -75,7 +75,9 @@ profile:
   greeting: "Hey, I’m"            # hero: "<greeting> <name>." with the name in accent
   tagline: "Mechatronics engineer building robots that see and manipulate. MSc MRBE @ TUM."
   location: "Munich, DE"
-  photo: "me.jpg"                 # in src/assets/, square crop; a framed placeholder shows until it exists
+  photo:                          # in src/assets/, square crops; a framed placeholder shows until they exist
+    bw: "me-bw.jpg"               # shown by default
+    color: "me-color.jpg"         # crossfades in on desktop hover
   email: ""                       # TODO
   cv: "assets/cv.pdf"
   status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot

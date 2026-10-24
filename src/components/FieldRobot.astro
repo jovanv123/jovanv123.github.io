@@ -1,186 +1,504 @@
 ---
-// Hero background: a differential-drive robot on a 3000 × 2000 mm field, seen by
-// an overhead camera. Rotate-then-translate control with a trapezoidal profile;
-// idle it wanders between free grid intersections, a click sets the goal.
-// Elements marked [data-nogo] (hero text, photo, readout) are no-go rectangles
-// the robot never paths through. Static pose under prefers-reduced-motion.
-// Under 768px only the robot shows, driving slowly along the bottom edge.
-const readout = [
-	['x', 'x'],
-	['y', 'y'],
-	['th', 'θ'],
-	['v', 'v'],
-	['w', 'ω'],
-	['goal', 'goal'],
-];
+// Hero background: a mini navigation stack on a 3000 × 2000 mm field. A diff-drive
+// robot scans hidden obstacles with a 2D lidar into a log-odds occupancy grid, inflates
+// it into a costmap, plans with A* (unknown space optimistic, line-of-sight smoothed)
+// and follows the path with pure pursuit. Idle it explores the nearest frontier; a
+// click sets the goal. [data-nogo] elements (hero text, photo, readout, reset link)
+// are never mapped or driven through. Reduced motion: a pre-explored static map with
+// one planned path. Under 768px: 50 mm cells, 36 rays, no grid lines or readout.
+// Readout lines are padded to a fixed width (monospace) so the box never resizes;
+// the placeholders give it its final size before the script runs.
+const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%', 'replan 0.0 ms'].map((line) => line.padEnd(17));
 ---
 
 <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
 	<canvas data-field class="size-full"></canvas>
 	<p data-readout data-nogo class="absolute right-8 bottom-4 hidden grid-cols-3 gap-x-6 font-mono text-xs text-muted md:grid wide:grid-cols-1">
-		{readout.map(([key]) => <span data-key={key} class="whitespace-pre"></span>)}
+		{readout.map((line) => <span class="whitespace-pre">{line}</span>)}
 	</p>
 </div>
+<button
+	type="button"
+	data-reset
+	data-nogo
+	class="meta absolute top-4 right-4 cursor-pointer normal-case underline decoration-border underline-offset-4 hover:text-accent-hover hover:decoration-current motion-reduce:hidden md:right-8">reset map</button
+>
 
 <script>
-	type P = { x: number; y: number };
-	type Box = { x0: number; x1: number; y0: number; y1: number };
-
 	const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-field]')!;
 	const hero = canvas.closest('section')!;
 	const out = document.querySelector<HTMLElement>('[data-readout]')!;
-	const cells = Object.fromEntries([...out.children].map((el) => [(el as HTMLElement).dataset.key!, el]));
+	const spans = [...out.children] as HTMLElement[];
 	const nogo = [...hero.querySelectorAll<HTMLElement>('[data-nogo]')];
 	const ctx = canvas.getContext('2d')!;
+	const off = document.createElement('canvas'); // costmap, 1 px per cell
+	const offCtx = off.getContext('2d')!;
+	const layer = document.createElement('canvas'); // static grid lines and ticks
+	const layerCtx = layer.getContext('2d')!;
 	const css = getComputedStyle(document.documentElement);
 	const color = (name: string) => css.getPropertyValue(`--site-color-${name}`).trim();
-	const [grid, trailColor, ink, accent, paper, muted] = ['border', 'line', 'text', 'accent', 'background', 'muted'].map(color);
+	const [grid, rayColor, ink, accent, paper, muted, surface] = ['border', 'line', 'text', 'accent', 'background', 'muted', 'surface'].map(color);
+	const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+	const [inkRgb, accentRgb, surfaceRgb] = [ink, accent, surface].map(rgb);
 	const font = `10px ${getComputedStyle(out).fontFamily}`;
-
 	const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-	const W = 3000, H = 2000; // field, mm
-	const A_MAX = 600, W_MAX = 2, DT = 0.01; // mm/s², rad/s, 100 Hz
+
+	const W = 3000, H = 2000, RANGE = 1200, LOOK = 150; // mm
+	const V_MAX = 400, A_MAX = 600, W_MAX = 2, DT = 0.01; // mm/s, mm/s², rad/s, 100 Hz
+	const HIT = 40, MISS = -12, OCC = 20; // log-odds steps and threshold, clamped to ±100
+	const UNKNOWN = 2; // A* cost multiplier for unknown cells
+	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
 	const BITS = ['0110', '0010', '0111', '0001'];
-	const PAD = 36; // px clearance around no-go elements: robot half-diagonal + label
+	const DI = Int8Array.of(1, -1, 0, 0, 1, 1, -1, -1), DJ = Int8Array.of(0, 0, 1, -1, 1, -1, 1, -1);
+	const DASH = [4, 4], SOLID: number[] = [];
 
-	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, mobile = false;
-	let boxes: Box[] = [], nodes: P[] = [], nx = 0;
-	let holes: DOMRect[] = []; // no-go elements in canvas px, kept clear of the grid
-	let pose = { x: 0, y: 0, th: Math.PI }, v = 0, om = 0, vMax = 400;
-	let path: P[] = [], goal: P | null = null, pending: P | null = null, turning = true;
-	let idle = 0, simT = 0, acc = 0, last = 0, shown = -1, visible = false;
-	let trail: { x: number; y: number; t: number }[] = [];
+	// Layout and grid. stat: bit 1 = no-go (never mapped), bit 2 = too close to the hero edge,
+	// bit 4 = planning buffer around no-go so pure pursuit corner cuts never reach it.
+	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, mobile = false, size = 1, layout = '', parked = true;
+	let CS = 25, NX = 0, NY = 0, N = 0, RAYS = 72, R = 80;
+	let stat = new Uint8Array(0), truth = stat, state = stat, bad = stat, onPath = stat, dflag = stat;
+	let L = new Int8Array(0), inf = new Uint16Array(0); // log-odds; occupied cells within the inflation radius
+	let g = new Float32Array(0), fv = g;
+	let came = new Int32Array(0), heap = came, hpos = came, queue = came, cells = came, dlist = came, onList = came;
+	let seen = new Uint32Array(0), closed = seen;
+	let kdx = new Int8Array(0), kdy = kdx, fdx = kdx, fdy = kdx;
+	let run = 0, hn = 0, dn = 0, onN = 0, qn = 0, known = 0, mappable = 0;
+	let img = new ImageData(1, 1);
 
-	const clamp = (a: number, m: number) => Math.max(-m, Math.min(m, a));
+	// Robot, path and sensor state.
+	let x = 0, y = 0, th = Math.PI, v = 0, om = 0;
+	const wx = new Float32Array(MAXW), wy = new Float32Array(MAXW);
+	let wn = 0, seg = 0, remain = 0;
+	let goal = -1, goalX = 0, goalY = 0, hasGoal = false, exploring = false, noPath = false, needReplan = false;
+	let lastPlan = -9, lastExplore = -9, idleT = 0, planMs = 0;
+	const rayX = new Float32Array(72), rayY = new Float32Array(72);
+	const hitX = new Float32Array(HIST * 72), hitY = new Float32Array(HIST * 72);
+	const hitN = new Int32Array(HIST), hitT = new Float64Array(HIST);
+	let scans = 0, rays = 0, scanX = 0, scanY = 0;
+	let simT = 0, acc = 0, last = 0, ticks = 0, shown = -1, inView = false, running = false, scheduled = false;
+
+	const clamp = (a: number, m: number) => (a > m ? m : a < -m ? -m : a);
 	const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
-	const px = (p: P) => ({ x: p.x * sx, y: h - p.y * sy });
-	const inBox = (p: P, b: Box) => p.x > b.x0 && p.x < b.x1 && p.y > b.y0 && p.y < b.y1;
-	const free = (p: P) =>
-		p.x * sx >= 24 && p.x * sx <= w - 24 && p.y * sy >= 24 && p.y * sy <= h - 24 && !boxes.some((b) => inBox(p, b));
-
-	// Straight segment a→b stays in free space (sampled every ~4px).
-	function clear(a: P, b: P) {
-		const n = Math.ceil(Math.hypot((b.x - a.x) * sx, (b.y - a.y) * sy) / 4);
-		for (let k = 0; k <= n; k++) if (!free({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n })) return false;
-		return true;
-	}
-
+	const cx = (k: number) => ((k % NX) + 0.5) * CS; // cell centre, mm
+	const cy = (k: number) => (((k / NX) | 0) + 0.5) * CS;
+	const cellAt = (px: number, py: number) => ((py / CS) | 0) * NX + ((px / CS) | 0);
+	// Escape mode (robot inside a margin or inflation) may cross margins and inflation, never no-go or obstacles.
+	const blocked = (c: number, escape: boolean) => stat[c] & 1 || state[c] === 2 || (!escape && (stat[c] !== 0 || inf[c] > 0));
+	const row = (label: string, value: string, unit: string) => `${label}${value.padStart(9)}${unit}`.padEnd(17);
 	// Grid step (mm) whose on-screen cell is closest to 48px.
 	const step = (s: number) => [50, 100, 200, 250, 500].reduce((m, c) => (Math.abs(c * s - 48) < Math.abs(m * s - 48) ? c : m));
 
-	// BFS over free grid intersections (8-connected), seeded from nodes visible from the robot.
-	function search() {
-		const prev = new Int32Array(nodes.length).fill(-2);
-		const queue: number[] = [];
-		nodes.forEach((n, i) => {
-			if (free(n) && Math.hypot((n.x - pose.x) / gx, (n.y - pose.y) / gy) < 1.5 && clear(pose, n)) {
-				prev[i] = -1;
-				queue.push(i);
+	function octile(a: number, b: number) {
+		const dx = Math.abs((a % NX) - (b % NX)), dy = Math.abs(((a / NX) | 0) - ((b / NX) | 0));
+		return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy);
+	}
+
+	function kernel(r: number) {
+		const c = Math.ceil(r / CS), xs: number[] = [], ys: number[] = [];
+		for (let j = -c; j <= c; j++) for (let i = -c; i <= c; i++) if ((i * i + j * j) * CS * CS <= r * r) xs.push(i), ys.push(j);
+		return [Int8Array.from(xs), Int8Array.from(ys)];
+	}
+
+	function alloc(n: number) {
+		N = n;
+		[stat, truth, state, bad, onPath, dflag] = [0, 0, 0, 0, 0, 0].map(() => new Uint8Array(n));
+		L = new Int8Array(n);
+		inf = new Uint16Array(n);
+		[g, fv] = [new Float32Array(n), new Float32Array(n)];
+		[came, heap, hpos, queue, cells, dlist, onList] = [0, 0, 0, 0, 0, 0, 0].map(() => new Int32Array(n));
+		[seen, closed] = [new Uint32Array(n), new Uint32Array(n)];
+		run = onN = 0;
+	}
+
+	function dirty(k: number) {
+		if (!dflag[k]) (dflag[k] = 1), (dlist[dn++] = k);
+	}
+
+	// Add s to the inflation count around cell k; returns cells that changed blocked state.
+	function spread(k: number, s: number, live: boolean) {
+		const i = k % NX, j = (k / NX) | 0;
+		let n = 0;
+		for (let m = 0; m < kdx.length; m++) {
+			const a = i + kdx[m], b = j + kdy[m];
+			if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
+			const c = b * NX + a, before = inf[c];
+			inf[c] += s;
+			if (!before === !inf[c]) continue;
+			if (!stat[c]) n++;
+			if (live) {
+				dirty(c);
+				if (s > 0 && onPath[c]) needReplan = true;
 			}
-		});
-		for (let q = 0; q < queue.length; q++) {
-			const i = queue[q], cx = i % nx;
-			for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-				const j = i + dx + dy * nx;
-				if (cx + dx < 0 || cx + dx >= nx || j < 0 || j >= nodes.length || prev[j] !== -2) continue;
-				if (!free(nodes[j]) || !clear(nodes[i], nodes[j])) continue;
-				prev[j] = i;
-				queue.push(j);
+		}
+		return n;
+	}
+
+	// Log-odds update of one cell; state changes re-inflate incrementally and mark pixels dirty.
+	function observe(k: number, d: number) {
+		const l = L[k] + d;
+		L[k] = l > 100 ? 100 : l < -100 ? -100 : l;
+		const s = L[k] > OCC ? 2 : L[k] < -OCC ? 1 : 0, b = state[k];
+		if (s === b) return;
+		state[k] = s;
+		if (!b) known++;
+		else if (!s) known--;
+		if (b === 2) spread(k, -1, true);
+		if (s === 2) {
+			spread(k, 1, true);
+			if (onPath[k]) needReplan = true;
+		}
+		dirty(k);
+	}
+
+	// Write changed cells into the costmap image and upload only their bounding box.
+	function flush() {
+		if (!dn) return;
+		const d = img.data;
+		let x0 = NX, y0 = NY, x1 = 0, y1 = 0;
+		for (let n = 0; n < dn; n++) {
+			const k = dlist[n], i = k % NX, r = NY - 1 - ((k / NX) | 0), p = (r * NX + i) * 4;
+			dflag[k] = 0;
+			const c = stat[k] & 1 ? null : state[k] === 2 ? inkRgb : inf[k] ? accentRgb : state[k] === 1 ? surfaceRgb : null;
+			d[p] = c ? c[0] : 0;
+			d[p + 1] = c ? c[1] : 0;
+			d[p + 2] = c ? c[2] : 0;
+			d[p + 3] = !c ? 0 : c === accentRgb ? 38 : 255;
+			if (i < x0) x0 = i;
+			if (i > x1) x1 = i;
+			if (r < y0) y0 = r;
+			if (r > y1) y1 = r;
+		}
+		dn = 0;
+		offCtx.putImageData(img, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+	}
+
+	function frontierCell(k: number) {
+		if (state[k] !== 1) return false;
+		const i = k % NX, j = (k / NX) | 0;
+		for (let m = 0; m < 8; m++) {
+			const a = i + DI[m], b = j + DJ[m];
+			if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
+			const c = b * NX + a;
+			if (!state[c] && !(stat[c] & 1)) return true;
+		}
+		return false;
+	}
+
+	// 8-connected BFS from s into queue[0..qn). Mode 0: cells clear of no-go and inflation.
+	// Mode 1: known free cells outside no-go; returns the nearest frontier cell clear of margins and inflation, or -1.
+	function bfs(s: number, mode: number) {
+		run++;
+		qn = 0;
+		queue[qn++] = s;
+		seen[s] = run;
+		for (let q = 0; q < qn; q++) {
+			const k = queue[q], i = k % NX, j = (k / NX) | 0;
+			if (mode && k !== s && !inf[k] && !stat[k] && !bad[k] && frontierCell(k)) return k;
+			for (let m = 0; m < 8; m++) {
+				const a = i + DI[m], b = j + DJ[m];
+				if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
+				const c = b * NX + a;
+				if (seen[c] === run || (mode ? stat[c] & 1 || state[c] !== 1 : stat[c] || inf[c])) continue;
+				seen[c] = run;
+				queue[qn++] = c;
 			}
 		}
-		return { prev, reached: queue };
+		return -1;
 	}
 
-	// Path to the reachable node nearest the target, shortcut to the fewest straight legs.
-	function plan(target: P) {
-		const { prev, reached } = search();
-		if (!reached.length) return;
-		let end = reached[0];
-		for (const i of reached) if (Math.hypot(nodes[i].x - target.x, nodes[i].y - target.y) < Math.hypot(nodes[end].x - target.x, nodes[end].y - target.y)) end = i;
-		const chain: P[] = [];
-		for (let i = end; i >= 0; i = prev[i]) chain.unshift(nodes[i]);
-		path = [];
-		let from: P = pose;
-		while (chain.length) {
-			let k = chain.length - 1;
-			while (k > 0 && !clear(from, chain[k])) k--;
-			from = chain[k];
-			path.push(from);
-			chain.splice(0, k + 1);
+	function push(c: number, f: number) {
+		fv[c] = f;
+		heap[hn] = c;
+		up(hn++);
+	}
+
+	function pop() {
+		const top = heap[0], end = heap[--hn];
+		if (hn) {
+			heap[0] = end;
+			down(0);
 		}
-		goal = path[path.length - 1];
-		turning = true;
+		return top;
 	}
 
-	function wander() {
-		if (mobile) {
-			const y = 20 / sy, ends = [{ x: 30 / sx, y }, { x: W - 30 / sx, y }];
-			path = [pose.x > W / 2 ? ends[0] : ends[1]];
-			goal = path[0];
-			turning = true;
-			return;
+	function up(i: number) {
+		const c = heap[i], f = fv[c];
+		while (i) {
+			const p = (i - 1) >> 1, pc = heap[p];
+			if (fv[pc] <= f) break;
+			heap[i] = pc;
+			hpos[pc] = i;
+			i = p;
 		}
-		const { reached } = search();
-		const far = reached.filter((i) => Math.hypot((nodes[i].x - pose.x) / gx, (nodes[i].y - pose.y) / gy) > 3);
-		const pick = far[Math.floor(Math.random() * far.length)] ?? reached[Math.floor(Math.random() * reached.length)];
-		if (pick !== undefined) plan(nodes[pick]);
+		heap[i] = c;
+		hpos[c] = i;
 	}
 
-	// One 10ms step: unicycle kinematics under the rotate-then-translate controller.
+	function down(i: number) {
+		const c = heap[i], f = fv[c];
+		for (;;) {
+			let l = 2 * i + 1;
+			if (l >= hn) break;
+			if (l + 1 < hn && fv[heap[l + 1]] < fv[heap[l]]) l++;
+			if (fv[heap[l]] >= f) break;
+			heap[i] = heap[l];
+			hpos[heap[i]] = i;
+			i = l;
+		}
+		heap[i] = c;
+		hpos[c] = i;
+	}
+
+	// A* (octile heuristic, binary heap with decrease-key). Returns t, or the closest
+	// reached free cell when t is unreachable. Inside inflation the robot may escape at a cost.
+	function astar(s: number, t: number) {
+		run++;
+		hn = 0;
+		const escape = inf[s] > 0 || stat[s] !== 0;
+		seen[s] = run;
+		g[s] = 0;
+		came[s] = -1;
+		push(s, octile(s, t));
+		let best = s, bestH = Infinity;
+		while (hn) {
+			const k = pop();
+			if (k === t) return k;
+			closed[k] = run;
+			const hk = octile(k, t);
+			if (hk < bestH && state[k] === 1 && !inf[k] && !stat[k]) (bestH = hk), (best = k);
+			const i = k % NX, j = (k / NX) | 0;
+			for (let m = 0; m < 8; m++) {
+				const a = i + DI[m], b = j + DJ[m];
+				if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
+				const c = b * NX + a;
+				if (closed[c] === run || blocked(c, escape)) continue;
+				if (m > 3 && (blocked(j * NX + a, escape) || blocked(b * NX + i, escape))) continue; // no corner cutting
+				const cost = g[k] + (m > 3 ? Math.SQRT2 : 1) * (state[c] ? 1 : UNKNOWN) * (inf[c] || stat[c] ? 4 : 1);
+				if (seen[c] !== run) {
+					seen[c] = run;
+					g[c] = cost;
+					came[c] = k;
+					push(c, cost + octile(c, t));
+				} else if (cost < g[c]) {
+					g[c] = cost;
+					came[c] = k;
+					fv[c] = cost + octile(c, t);
+					up(hpos[c]);
+				}
+			}
+		}
+		return best;
+	}
+
+	// DDA through the cells of segment (x0,y0)→(x1,y1), in cell units. Marks the path
+	// cells, or returns false at the first blocked cell (line-of-sight check).
+	function trace(x0: number, y0: number, x1: number, y1: number, mark: boolean) {
+		let i = x0 | 0, j = y0 | 0;
+		const ie = x1 | 0, je = y1 | 0, dx = x1 - x0, dy = y1 - y0;
+		const si = dx > 0 ? 1 : -1, sj = dy > 0 ? 1 : -1, tdx = Math.abs(1 / dx), tdy = Math.abs(1 / dy);
+		let tx = dx ? (dx > 0 ? i + 1 - x0 : x0 - i) * tdx : Infinity;
+		let ty = dy ? (dy > 0 ? j + 1 - y0 : y0 - j) * tdy : Infinity;
+		for (let n = NX + NY + 2; n > 0; n--) {
+			const k = j * NX + i;
+			if (!mark && (stat[k] || state[k] === 2 || inf[k])) return false;
+			if (mark && !onPath[k]) (onPath[k] = 1), (onList[onN++] = k);
+			if (i === ie && j === je) break;
+			if (tx < ty) (tx += tdx), (i += si);
+			else (ty += tdy), (j += sj);
+		}
+		return true;
+	}
+
+	const sight = (a: number, b: number) =>
+		trace((a % NX) + 0.5, ((a / NX) | 0) + 0.5, (b % NX) + 0.5, ((b / NX) | 0) + 0.5, false);
+
+	function clearPath() {
+		for (let n = 0; n < onN; n++) onPath[onList[n]] = 0;
+		onN = wn = seg = 0;
+	}
+
+	function addWay(k: number) {
+		if (wn < MAXW) (wx[wn] = cx(k)), (wy[wn++] = cy(k));
+	}
+
+	function plan() {
+		needReplan = false;
+		lastPlan = simT;
+		const s = cellAt(x, y), t0 = performance.now();
+		const end = astar(s, goal);
+		planMs = performance.now() - t0;
+		if (end !== goal) {
+			// Unreachable: snap the goal to the nearest reachable free cell.
+			if (exploring) bad[goal] = 1;
+			noPath = true;
+			goal = end;
+			goalX = cx(end);
+			goalY = cy(end);
+		}
+		let pn = 0;
+		for (let k = end; k >= 0; k = came[k]) pn++;
+		for (let k = end, n = pn; k >= 0; k = came[k]) cells[--n] = k;
+		clearPath();
+		wx[0] = x;
+		wy[0] = y;
+		wn = 1;
+		// Line-of-sight shortcutting: keep only the cells where visibility breaks.
+		for (let a = 0, b = 2; b < pn; b++) if (!sight(cells[a], cells[b])) addWay(cells[(a = b - 1)]);
+		if (pn > 1) addWay(end);
+		remain = 0;
+		for (let n = 1; n < wn; n++) {
+			trace(wx[n - 1] / CS, wy[n - 1] / CS, wx[n] / CS, wy[n] / CS, true);
+			remain += Math.hypot(wx[n] - wx[n - 1], wy[n] - wy[n - 1]);
+		}
+	}
+
+	function setGoal(k: number, explore: boolean) {
+		goal = k;
+		goalX = cx(k);
+		goalY = cy(k);
+		hasGoal = true;
+		exploring = explore;
+		noPath = false;
+		needReplan = true;
+		lastPlan = -9;
+	}
+
+	function arrive() {
+		if (exploring && frontierCell(goal)) bad[goal] = 1;
+		hasGoal = noPath = false;
+		remain = 0;
+		idleT = simT;
+		clearPath();
+	}
+
+	// Idle: head for the nearest frontier; once the map is done, wander between free cells.
+	function explore() {
+		lastExplore = simT;
+		const f = bfs(cellAt(x, y), 1);
+		if (f >= 0) return setGoal(f, true);
+		if (simT - idleT < 3) return;
+		for (let n = 0; n < 20 && qn > 1; n++) {
+			const k = queue[1 + ((Math.random() * (qn - 1)) | 0)];
+			if (!inf[k] && !stat[k]) return setGoal(k, false);
+		}
+	}
+
+	// 2D lidar: DDA per ray against the truth grid; free along the ray, occupied at the hit.
+	function scan() {
+		const slot = scans++ % HIST, ox = x / CS, oy = y / CS, max = RANGE / CS;
+		let hits = 0;
+		for (let m = 0; m < RAYS; m++) {
+			const a = th + (m * 2 * Math.PI) / RAYS, dx = Math.cos(a), dy = Math.sin(a);
+			const si = dx > 0 ? 1 : -1, sj = dy > 0 ? 1 : -1, tdx = Math.abs(1 / dx), tdy = Math.abs(1 / dy);
+			let i = ox | 0, j = oy | 0, t = 0, hit = false;
+			let tx = dx ? (dx > 0 ? i + 1 - ox : ox - i) * tdx : Infinity;
+			let ty = dy ? (dy > 0 ? j + 1 - oy : oy - j) * tdy : Infinity;
+			while (i >= 0 && i < NX && j >= 0 && j < NY) {
+				const k = j * NX + i;
+				if (stat[k] & 1) break;
+				if (truth[k]) {
+					observe(k, HIT);
+					hit = true;
+					break;
+				}
+				observe(k, MISS);
+				if (tx < ty) (t = tx), (tx += tdx), (i += si);
+				else (t = ty), (ty += tdy), (j += sj);
+				if (t >= max) {
+					t = max;
+					break;
+				}
+			}
+			rayX[m] = x + dx * t * CS;
+			rayY[m] = y + dy * t * CS;
+			if (hit) (hitX[slot * 72 + hits] = rayX[m]), (hitY[slot * 72 + hits++] = rayY[m]);
+		}
+		hitN[slot] = hits;
+		hitT[slot] = simT;
+		rays = RAYS;
+		scanX = x;
+		scanY = y;
+		flush();
+	}
+
+	// Footprint check against known obstacles; the centre must also stay out of no-go cells.
+	function collides(px: number, py: number) {
+		if (px < 0 || px >= W || py < 0 || py >= H || stat[cellAt(px, py)] & 1) return true;
+		const i = (px / CS) | 0, j = (py / CS) | 0;
+		for (let m = 0; m < fdx.length; m++) {
+			const a = i + fdx[m], b = j + fdy[m];
+			if (a >= 0 && a < NX && b >= 0 && b < NY && state[b * NX + a] === 2) return true;
+		}
+		return false;
+	}
+
+	// One 10 ms step: sense at 10 Hz, replan on demand (≤ 10 Hz) or every 1 s, pure pursuit, unicycle kinematics.
 	function tick() {
 		simT += DT;
-		const g = path[0];
-		if (pending && v === 0) {
-			plan(pending);
-			pending = null;
-		} else if (pending || !g) {
-			v = Math.max(0, v - A_MAX * DT); // brake along the current leg before replanning
-			om = 0;
-			if (!g && (idle += DT) > 1.2) (idle = 0), wander();
-		} else {
-			const dx = g.x - pose.x, dy = g.y - pose.y, d = Math.hypot(dx, dy);
-			const e = wrap(Math.atan2(dy, dx) - pose.th);
-			if (turning) {
-				v = 0;
-				om = clamp(4 * e, W_MAX);
-				if (Math.abs(e) < 0.004 || d < 1) {
-					turning = false;
-					om = 0;
-					if (d >= 1) pose.th = Math.atan2(dy, dx); // settle exactly on the bearing
+		if (ticks++ % 10 === 0) scan();
+		if (!hasGoal && simT - idleT > 0.6 && simT - lastExplore > 0.25) explore();
+		if (hasGoal && ((needReplan && simT - lastPlan >= 0.1) || simT - lastPlan >= 1)) plan();
+		let vt = 0, wt = 0;
+		if (hasGoal && wn < 2) arrive();
+		else if (hasGoal) {
+			let t = 0, px = 0, py = 0;
+			for (;;) {
+				const ax = wx[seg], ay = wy[seg], bx = wx[seg + 1] - ax, by = wy[seg + 1] - ay;
+				t = ((x - ax) * bx + (y - ay) * by) / (bx * bx + by * by || 1);
+				if (t < 1 || seg >= wn - 2) {
+					t = t < 0 ? 0 : t > 1 ? 1 : t;
+					px = ax + bx * t;
+					py = ay + by * t;
+					break;
 				}
-			} else {
-				// Profile on the distance left along the heading, so a tiny lateral offset can't overshoot.
-				const along = Math.max(0, dx * Math.cos(pose.th) + dy * Math.sin(pose.th));
-				v = Math.min(v + A_MAX * DT, vMax, Math.sqrt(2 * A_MAX * along));
-				if (along < 0.5 || v * DT >= along) {
-					pose.x = g.x;
-					pose.y = g.y;
-					v = 0;
-					path.shift();
-					turning = true;
-					if (!path.length) goal = null;
+				seg++;
+			}
+			// Lookahead point LOOK mm further along the path; remaining length for the profile.
+			let lx = wx[wn - 1], ly = wy[wn - 1], need = LOOK, found = false;
+			remain = 0;
+			for (let n = seg + 1; n < wn; n++) {
+				const l = Math.hypot(wx[n] - px, wy[n] - py);
+				if (!found && l >= need) (lx = px + ((wx[n] - px) * need) / l), (ly = py + ((wy[n] - py) * need) / l), (found = true);
+				if (!found) need -= l;
+				remain += l;
+				px = wx[n];
+				py = wy[n];
+			}
+			if (Math.hypot(wx[wn - 1] - x, wy[wn - 1] - y) < 15) arrive();
+			else {
+				const alpha = wrap(Math.atan2(ly - y, lx - x) - th);
+				if (Math.abs(alpha) > Math.PI / 3) wt = clamp(3 * alpha, W_MAX); // rotate in place
+				else {
+					const k = (2 * Math.sin(alpha)) / (Math.hypot(lx - x, ly - y) || 1);
+					vt = Math.min(V_MAX, Math.sqrt(2 * A_MAX * remain));
+					wt = vt * k;
+					if (Math.abs(wt) > W_MAX) (wt = clamp(wt, W_MAX)), (vt = W_MAX / Math.abs(k));
 				}
 			}
 		}
-		pose.x += v * Math.cos(pose.th) * DT;
-		pose.y += v * Math.sin(pose.th) * DT;
-		pose.th = wrap(pose.th + om * DT);
-		trail.push({ x: pose.x, y: pose.y, t: simT });
-		while (trail[0].t < simT - 3) trail.shift();
+		v = vt > v ? Math.min(vt, v + A_MAX * DT) : Math.max(vt, v - A_MAX * DT);
+		om = wt;
+		const nx = x + v * Math.cos(th) * DT, ny = y + v * Math.sin(th) * DT;
+		if (collides(nx, ny)) {
+			v = om = 0;
+			needReplan = hasGoal;
+		} else (x = nx), (y = ny);
+		th = wrap(th + om * DT);
 	}
 
-	function drawRobot() {
-		const p = px(pose);
-		const a = -Math.atan2(sy * Math.sin(pose.th), sx * Math.cos(pose.th)); // heading on screen
+	function drawRobot(px: number, py: number) {
+		const a = -Math.atan2(sy * Math.sin(th), sx * Math.cos(th)); // heading on screen
 		ctx.save();
-		ctx.translate(p.x, p.y);
+		ctx.translate(px, py);
 		ctx.rotate(a);
-		if (mobile) ctx.scale(0.7, 0.7);
+		ctx.scale(size, size);
 		ctx.fillStyle = ink;
 		ctx.fillRect(-10, -21, 20, 3);
 		ctx.fillRect(-10, 18, 20, 3);
 		ctx.strokeStyle = ink;
+		ctx.fillStyle = paper;
+		ctx.fillRect(-18, -18, 36, 36);
 		ctx.strokeRect(-18, -18, 36, 36);
 		ctx.fillStyle = accent;
 		ctx.beginPath();
@@ -190,8 +508,7 @@ const readout = [
 		ctx.fill();
 		for (let r = 0; r < 6; r++)
 			for (let c = 0; c < 6; c++) {
-				const white = r > 0 && r < 5 && c > 0 && c < 5 && BITS[r - 1][c - 1] === '1';
-				ctx.fillStyle = white ? paper : ink;
+				ctx.fillStyle = r > 0 && r < 5 && c > 0 && c < 5 && BITS[r - 1][c - 1] === '1' ? paper : ink;
 				ctx.fillRect(-12 + c * 3.5, -10.5 + r * 3.5, 3.5, 3.5);
 			}
 		ctx.restore();
@@ -199,138 +516,293 @@ const readout = [
 
 		// Camera detection: axis-aligned box around the rotated marker.
 		const s = Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)), half = 10.5 * s + 4;
-		const cx = p.x - 1.5 * Math.cos(a), cy = p.y - 1.5 * Math.sin(a);
+		const bx = px - 1.5 * Math.cos(a), by = py - 1.5 * Math.sin(a);
 		ctx.strokeStyle = ctx.fillStyle = accent;
-		ctx.setLineDash([3, 3]);
-		ctx.strokeRect(cx - half, cy - half, 2 * half, 2 * half);
-		ctx.setLineDash([]);
-		ctx.fillText('aruco id=7', Math.min(cx - half, w - ctx.measureText('aruco id=7').width - 4), cy - half - 4);
+		ctx.setLineDash(DASH);
+		ctx.strokeRect(bx - half, by - half, 2 * half, 2 * half);
+		ctx.setLineDash(SOLID);
+		ctx.fillText('aruco id=7', Math.min(bx - half, w - 59), by - half - 4);
 	}
 
 	function draw() {
 		ctx.clearRect(0, 0, w, h);
+		if (parked) return;
+		ctx.imageSmoothingEnabled = false;
+		ctx.drawImage(off, 0, 0, w, h);
+		ctx.drawImage(layer, 0, 0, w, h);
 		ctx.lineWidth = 1;
-		ctx.font = font;
-		if (!mobile) {
-			ctx.strokeStyle = grid;
-			ctx.fillStyle = muted;
-			ctx.beginPath();
-			for (let x = gx; x < W; x += gx) (ctx.moveTo(Math.round(x * sx) + 0.5, 0), ctx.lineTo(Math.round(x * sx) + 0.5, h));
-			for (let y = gy; y < H; y += gy) (ctx.moveTo(0, Math.round(h - y * sy) + 0.5), ctx.lineTo(w, Math.round(h - y * sy) + 0.5));
-			ctx.stroke();
-			for (const r of holes) ctx.clearRect(r.x - 8, r.y - 8, r.width + 16, r.height + 16);
-			// Axis ticks in mm, every other line, skipped where they would touch content.
+
+		if (rays) {
+			const ox = scanX * sx, oy = h - scanY * sy;
 			ctx.globalAlpha = 0.6;
-			for (let x = 2 * gx; x < W; x += 2 * gx) if (!boxes.some((b) => inBox({ x, y: 8 / sy }, b))) ctx.fillText(`${x}`, x * sx + 3, h - 4);
-			for (let y = 2 * gy; y < H; y += 2 * gy) if (!boxes.some((b) => inBox({ x: 12 / sx, y }, b))) ctx.fillText(`${y}`, 4, h - y * sy - 3);
-			ctx.globalAlpha = 1;
-
-			ctx.strokeStyle = trailColor;
-			for (let i = 1; i < trail.length; i++) {
-				const a = px(trail[i - 1]), b = px(trail[i]);
-				ctx.globalAlpha = 1 - (simT - trail[i].t) / 3;
-				ctx.beginPath();
-				ctx.moveTo(a.x, a.y);
-				ctx.lineTo(b.x, b.y);
-				ctx.stroke();
-			}
-			ctx.globalAlpha = 1;
-
-			if (goal) {
-				const g = px(goal);
-				ctx.strokeStyle = accent;
-				ctx.beginPath();
-				ctx.moveTo(g.x - 5, g.y);
-				ctx.lineTo(g.x + 5, g.y);
-				ctx.moveTo(g.x, g.y - 5);
-				ctx.lineTo(g.x, g.y + 5);
-				ctx.stroke();
-			}
+			ctx.strokeStyle = rayColor;
+			ctx.beginPath();
+			for (let m = 0; m < rays; m++) ctx.moveTo(ox, oy), ctx.lineTo(rayX[m] * sx, h - rayY[m] * sy);
+			ctx.stroke();
 		}
-		drawRobot();
+		ctx.fillStyle = accent;
+		for (let s = 0; s < HIST; s++) {
+			const age = simT - hitT[s];
+			if (!hitN[s] || age > 0.5) continue;
+			ctx.globalAlpha = 1 - age / 0.5;
+			for (let n = s * 72; n < s * 72 + hitN[s]; n++) ctx.fillRect(hitX[n] * sx - 1, h - hitY[n] * sy - 1, 2, 2);
+		}
+		ctx.globalAlpha = 1;
 
-		if (!mobile && simT - shown >= 0.1) {
+		const rx = x * sx, ry = h - y * sy;
+		ctx.strokeStyle = accent;
+		if (wn > 1) {
+			ctx.setLineDash(DASH);
+			ctx.beginPath();
+			ctx.moveTo(rx, ry);
+			for (let n = seg + 1; n < wn; n++) ctx.lineTo(wx[n] * sx, h - wy[n] * sy);
+			ctx.stroke();
+			ctx.setLineDash(SOLID);
+		}
+		if (hasGoal) {
+			const gx_ = goalX * sx, gy_ = h - goalY * sy;
+			ctx.beginPath();
+			ctx.moveTo(gx_ - 5, gy_);
+			ctx.lineTo(gx_ + 5, gy_);
+			ctx.moveTo(gx_, gy_ - 5);
+			ctx.lineTo(gx_, gy_ + 5);
+			ctx.stroke();
+		}
+		drawRobot(rx, ry);
+
+		if (!mobile && (still || simT - shown >= 0.1)) {
 			shown = simT;
-			const row = (label: string, value: string, unit: string) => `${label}${value.padStart(9)}${unit}`;
-			cells.x.textContent = row('x', pose.x.toFixed(1), ' mm');
-			cells.y.textContent = row('y', pose.y.toFixed(1), ' mm');
-			cells.th.textContent = row('θ', ((pose.th * 180) / Math.PI).toFixed(1), '°');
-			cells.v.textContent = row('v', v.toFixed(1), ' mm/s');
-			cells.w.textContent = row('ω', om.toFixed(2), ' rad/s');
-			cells.goal.textContent = goal ? `goal (${Math.round(goal.x)}, ${Math.round(goal.y)})` : 'goal —';
+			spans[0].textContent = row('x', x.toFixed(1), ' mm');
+			spans[1].textContent = row('y', y.toFixed(1), ' mm');
+			spans[2].textContent = row('θ', ((th * 180) / Math.PI).toFixed(1), '°');
+			spans[3].textContent = row('v', v.toFixed(1), ' mm/s');
+			spans[4].textContent = row('ω', om.toFixed(2), ' rad/s');
+			spans[5].textContent = (hasGoal ? `goal (${Math.round(goalX)}, ${Math.round(goalY)})` : 'goal —').padEnd(17);
+			spans[6].textContent = (noPath ? 'path no path' : hasGoal ? `path ${(remain / 1000).toFixed(2)} m` : 'path —').padEnd(17);
+			spans[7].textContent = `explored ${Math.round((100 * known) / (mappable || 1))}%`.padEnd(17);
+			spans[8].textContent = `replan ${planMs.toFixed(1)} ms`.padEnd(17);
 		}
 	}
 
-	function resize() {
+	// Random hidden obstacles: 6–8 rectangles and 2–3 circles, clear of the robot and the
+	// no-go zones, each rejected if it cuts off more free space than its own footprint.
+	function generate(s: number) {
+		truth.fill(0);
+		inf.fill(0);
+		bfs(s, 0);
+		const base = qn;
+		let prev = qn, rects = 6 + ((Math.random() * 3) | 0), circles = 2 + ((Math.random() * 2) | 0);
+		for (let tries = 0; tries < 400 && rects + circles > 0; tries++) {
+			const round = circles > 0 && (!rects || Math.random() < 0.3);
+			const ox = Math.random() * W, oy = Math.random() * H;
+			const a = round ? 50 + Math.random() * 60 : 40 + Math.random() * 110, b = round ? a : 40 + Math.random() * 110;
+			if (Math.hypot(ox - x, oy - y) < Math.max(a, b) + R + 250) continue;
+			const i0 = Math.max(0, Math.floor((ox - a) / CS) - 1), i1 = Math.min(NX - 1, Math.floor((ox + a) / CS) + 1);
+			const j0 = Math.max(0, Math.floor((oy - b) / CS) - 1), j1 = Math.min(NY - 1, Math.floor((oy + b) / CS) + 1);
+			let n = 0, ok = true;
+			for (let j = j0; j <= j1 && ok; j++)
+				for (let i = i0; i <= i1; i++) {
+					const k = j * NX + i, dx = cx(k) - ox, dy = cy(k) - oy;
+					if (stat[k] & 1) {
+						ok = false;
+						break;
+					}
+					if ((round ? dx * dx + dy * dy <= a * a : Math.abs(dx) <= a && Math.abs(dy) <= b) && !truth[k]) cells[n++] = k;
+				}
+			if (!ok || !n) continue;
+			let lost = 0;
+			for (let m = 0; m < n; m++) (truth[cells[m]] = 1), (lost += spread(cells[m], 1, false));
+			bfs(s, 0);
+			if (qn < prev - lost - 0.03 * base) {
+				for (let m = 0; m < n; m++) (truth[cells[m]] = 0), spread(cells[m], -1, false);
+				continue;
+			}
+			prev = qn;
+			if (round) circles--;
+			else rects--;
+		}
+	}
+
+	function resetMap() {
+		L.fill(0);
+		state.fill(0);
+		inf.fill(0);
+		bad.fill(0);
+		dflag.fill(0);
+		hitN.fill(0);
+		clearPath();
+		dn = known = rays = remain = 0;
+		hasGoal = exploring = noPath = false;
+		idleT = simT;
+		img.data.fill(0);
+		offCtx.putImageData(img, 0, 0);
+	}
+
+	// Reduced motion: map everything at once and show one planned path.
+	function preExplore() {
+		for (let k = 0; k < N; k++) if (!(stat[k] & 1)) observe(k, truth[k] ? 127 : -127);
+		flush();
+		bfs(cellAt(x, y), 0);
+		if (qn < 2) return;
+		setGoal(queue[qn - 1], false);
+		plan();
+	}
+
+	function paintLayer(rects: DOMRect[], dpr: number) {
+		layer.width = canvas.width;
+		layer.height = canvas.height;
+		layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		if (mobile) return;
+		layerCtx.strokeStyle = grid;
+		layerCtx.lineWidth = 1;
+		layerCtx.beginPath();
+		for (let x = gx; x < W; x += gx) layerCtx.moveTo(Math.round(x * sx) + 0.5, 0), layerCtx.lineTo(Math.round(x * sx) + 0.5, h);
+		for (let y = gy; y < H; y += gy) layerCtx.moveTo(0, Math.round(h - y * sy) + 0.5), layerCtx.lineTo(w, Math.round(h - y * sy) + 0.5);
+		layerCtx.stroke();
+		for (const r of rects) layerCtx.clearRect(r.x - 8, r.y - 8, r.width + 16, r.height + 16);
+		// Axis ticks in mm, every other line, skipped where they would touch content.
+		const near = (px: number, py: number) => rects.some((r) => px > r.left - 4 && px < r.right + 4 && py > r.top - 4 && py < r.bottom + 4);
+		layerCtx.font = font;
+		layerCtx.fillStyle = muted;
+		layerCtx.globalAlpha = 0.6;
+		for (let x = 2 * gx; x < W; x += 2 * gx) if (!near(x * sx + 12, h - 8)) layerCtx.fillText(`${x}`, x * sx + 3, h - 4);
+		for (let y = 2 * gy; y < H; y += 2 * gy) if (!near(12, h - y * sy - 6)) layerCtx.fillText(`${y}`, 4, h - y * sy - 3);
+	}
+
+	// (Re)build everything when the hero's size or the no-go elements change.
+	function init() {
+		const c = canvas.getBoundingClientRect();
+		const rects = nogo
+			.filter((el) => el.offsetWidth)
+			.map((el) => {
+				const r = el.getBoundingClientRect();
+				return new DOMRect(r.left - c.left, r.top - c.top, r.width, r.height);
+			});
+		const key = [c.width, c.height, ...rects.flatMap((r) => [r.x, r.y, r.width, r.height])].map(Math.round).join();
+		if (key === layout) return;
+		layout = key;
+
 		const dpr = devicePixelRatio || 1;
 		w = canvas.clientWidth;
 		h = canvas.clientHeight;
 		canvas.width = Math.round(w * dpr);
 		canvas.height = Math.round(h * dpr);
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		ctx.font = font;
+		mobile = w < 768;
+		CS = mobile ? 50 : 25;
+		RAYS = mobile ? 36 : 72;
+		size = mobile ? 0.7 : 1;
 		sx = w / W;
 		sy = h / H;
-		const wasMobile = mobile;
-		mobile = w < 768;
-		vMax = mobile ? 150 : 400;
 		gx = step(sx);
 		gy = step(sy);
+		NX = W / CS;
+		NY = H / CS;
+		if (NX * NY !== N) alloc(NX * NY);
 
-		const c = canvas.getBoundingClientRect();
-		holes = mobile
-			? []
-			: nogo.filter((el) => el.offsetWidth).map((el) => {
-					const r = el.getBoundingClientRect();
-					return new DOMRect(r.left - c.left, r.top - c.top, r.width, r.height);
-				});
-		boxes = holes.map((r) => ({
-			x0: (r.left - PAD) / sx,
-			x1: (r.right + PAD) / sx,
-			y0: (h - r.bottom - PAD) / sy,
-			y1: (h - r.top + PAD) / sy,
-		}));
-		nx = Math.floor(W / gx) - 1;
-		nodes = [];
-		for (let y = gy; y < H; y += gy) for (let x = gx; x <= nx * gx; x += gx) nodes.push({ x, y });
+		// Robot radius: the drawn half-size in mm along the finer axis, raised so that radius
+		// + 50 mm inflation still covers the drawn body along the coarser axis.
+		const half = 21 * size, pad = mobile ? 22 : 36, edge = half + 3;
+		R = Math.max(half / Math.max(sx, sy), half / Math.min(sx, sy) - 50);
+		[kdx, kdy] = kernel(R + 50);
+		[fdx, fdy] = kernel(R);
 
-		// Restart from the bottom-right corner when the layout no longer fits the current pose.
-		if (mobile !== wasMobile || (mobile ? Math.abs(pose.y * sy - 20) > 1 : !free(pose))) {
-			const start = mobile ? { x: W - 30 / sx, y: 20 / sy } : nodes.filter(free).sort((a, b) => b.x - b.y * 1.5 - (a.x - a.y * 1.5))[0];
-			if (start) pose = { x: start.x, y: start.y, th: Math.PI };
-			path = [];
-			goal = pending = null;
-			trail = [];
+		mappable = 0;
+		for (let k = 0; k < N; k++) {
+			const X = cx(k) * sx, Y = h - cy(k) * sy;
+			let s = X < edge || X > w - edge || Y < edge || Y > h - edge ? 2 : 0;
+			for (const r of rects) if (X > r.left - pad && X < r.right + pad && Y > r.top - pad && Y < r.bottom + pad) s |= 1;
+			stat[k] = s;
+			if (!(s & 1)) mappable++;
+		}
+		for (let k = 0; k < N; k++) {
+			if (!(stat[k] & 1)) continue;
+			const i = k % NX, j = (k / NX) | 0;
+			for (let b = Math.max(0, j - 2); b <= Math.min(NY - 1, j + 2); b++)
+				for (let a = Math.max(0, i - 2); a <= Math.min(NX - 1, i + 2); a++) if (!(stat[b * NX + a] & 1)) stat[b * NX + a] |= 4;
+		}
+		// Start in the largest free region, at its cell nearest the bottom-right corner.
+		inf.fill(0);
+		bad.fill(0);
+		let seed = -1, largest = 0, start = -1, best = -Infinity;
+		for (let k = 0; k < N; k++) {
+			if (stat[k] || bad[k]) continue;
+			bfs(k, 0);
+			for (let q = 0; q < qn; q++) bad[queue[q]] = 1;
+			if (qn > largest) (largest = qn), (seed = k);
+		}
+		if (seed >= 0) bfs(seed, 0);
+		for (let q = 0; q < qn && seed >= 0; q++) {
+			const k = queue[q], score = cx(k) * sx - 1.5 * cy(k) * sy;
+			if (score > best) (best = score), (start = k);
+		}
+		parked = start < 0;
+		off.width = NX;
+		off.height = NY;
+		img = offCtx.createImageData(NX, NY);
+		resetMap();
+		paintLayer(rects, dpr);
+		if (!parked) {
+			x = cx(start);
+			y = cy(start);
+			th = Math.PI;
 			v = om = 0;
+			generate(start);
+			resetMap();
+			if (still) preExplore();
 		}
 		draw();
+		sync();
 	}
 
 	function frame(now: number) {
-		if (!visible) return;
+		scheduled = false;
+		if (!running) return;
 		acc += Math.min((now - last) / 1000, 0.1);
 		last = now;
 		for (; acc >= DT; acc -= DT) tick();
 		draw();
+		scheduled = true;
 		requestAnimationFrame(frame);
 	}
 
-	const sizes = new ResizeObserver(resize);
+	// Run only while the hero is on screen and the tab is visible.
+	function sync() {
+		running = inView && !document.hidden && !still && !parked;
+		if (running && !scheduled) {
+			scheduled = true;
+			last = performance.now();
+			requestAnimationFrame(frame);
+		}
+	}
+
+	let timer = 0;
+	// First layout builds immediately; later resizes are debounced.
+	const sizes = new ResizeObserver(() => {
+		clearTimeout(timer);
+		if (!N) init();
+		else timer = window.setTimeout(init, 100);
+	});
 	[canvas, ...nogo].forEach((el) => sizes.observe(el));
+
+	hero.querySelector('[data-reset]')!.addEventListener('click', () => {
+		if (!N) return;
+		resetMap();
+		draw();
+	});
 
 	if (!still) {
 		hero.addEventListener('click', (e) => {
-			if (mobile || (e.target as Element).closest('a, [data-nogo]')) return;
+			if (parked || (e.target as Element).closest('a, button, [data-nogo]')) return;
 			const r = canvas.getBoundingClientRect();
-			pending = { x: (e.clientX - r.left) / sx, y: (r.bottom - e.clientY) / sy };
-			path = [];
+			const px = (e.clientX - r.left) / sx, py = (r.bottom - e.clientY) / sy;
+			if (px >= 0 && px < W && py >= 0 && py < H) setGoal(cellAt(px, py), false);
 		});
 		new IntersectionObserver(([entry]) => {
-			const was = visible;
-			visible = entry.isIntersecting;
-			if (visible && !was) {
-				last = performance.now();
-				requestAnimationFrame(frame);
-			}
+			inView = entry.isIntersecting;
+			sync();
 		}).observe(canvas);
+		document.addEventListener('visibilitychange', sync);
 	}
 </script>

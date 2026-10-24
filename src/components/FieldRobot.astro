@@ -4,15 +4,15 @@
 // edges, a log-odds grid maps the free space around them (they are never mapped or driven
 // through), A* plans (unknown space optimistic, line-of-sight smoothed) and pure pursuit
 // follows. Idle it explores the nearest frontier; a click sets the goal. Reduced motion: a pre-explored static map with
-// one planned path. Under 768px: 50 mm cells, 36 rays, no grid lines or readout.
+// one planned path. Hidden and not run under 768px (md), where the hero is just text and photo.
 // Readout lines are padded to a fixed width (monospace) so the box never resizes;
 // the placeholders give it its final size before the script runs.
 const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%', 'replan 0.0 ms'].map((line) => line.padEnd(17));
 ---
 
-<div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+<div class="pointer-events-none absolute inset-0 hidden overflow-hidden md:block" aria-hidden="true">
 	<canvas data-field class="size-full"></canvas>
-	<p data-readout data-nogo class="absolute right-8 bottom-4 hidden grid-cols-3 gap-x-6 font-mono text-xs text-muted md:grid wide:grid-cols-1">
+	<p data-readout data-nogo class="absolute right-8 bottom-4 grid grid-cols-3 gap-x-6 font-mono text-xs text-muted wide:grid-cols-1">
 		{readout.map((line) => <span class="whitespace-pre">{line}</span>)}
 	</p>
 </div>
@@ -20,7 +20,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	type="button"
 	data-reset
 	data-nogo
-	class="meta absolute top-4 right-4 cursor-pointer normal-case underline decoration-border underline-offset-4 hover:text-accent-hover hover:decoration-current motion-reduce:hidden md:right-8">reset map</button
+	class="meta absolute top-4 right-8 hidden cursor-pointer normal-case underline decoration-border underline-offset-4 hover:text-accent-hover hover:decoration-current md:motion-safe:inline">reset map</button
 >
 
 <script>
@@ -46,6 +46,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const MISS = -12, FREE = -20; // log-odds step per pass-through and free threshold, clamped to -100
 	const UNKNOWN = 2; // A* cost multiplier for unknown cells
 	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
+	const MIN_LEG = 600; // mm: frontiers closer than this are only used when nothing farther is left
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
 	const BITS = ['0110', '0010', '0111', '0001'];
 	const DI = Int8Array.of(1, -1, 0, 0, 1, 1, -1, -1), DJ = Int8Array.of(0, 0, 1, -1, 1, -1, 1, -1);
@@ -53,8 +54,9 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 
 	// Layout and grid. stat: bit 1 = no-go (never mapped), bit 2 = too close to the hero edge,
 	// bit 4 = planning buffer around no-go so pure pursuit corner cuts never reach it.
-	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, mobile = false, size = 1, layout = '', parked = true;
-	let CS = 25, NX = 0, NY = 0, N = 0, RAYS = 72;
+	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, layout = '', parked = true;
+	const CS = 25, NX = W / CS, NY = H / CS, RAYS = 72; // 25 mm cells, 72 rays (5°)
+	let N = 0;
 	let stat = new Uint8Array(0), state = stat, bad = stat, dflag = stat; // state: 0 unknown, 1 free
 	let L = new Int8Array(0); // log-odds
 	let g = new Float32Array(0), fv = g;
@@ -68,7 +70,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const wx = new Float32Array(MAXW), wy = new Float32Array(MAXW);
 	let wn = 0, seg = 0, remain = 0;
 	let goal = -1, goalX = 0, goalY = 0, hasGoal = false, exploring = false, noPath = false, needReplan = false;
-	let lastPlan = -9, lastExplore = -9, idleT = 0, planMs = 0;
+	let lastPlan = -9, lastExplore = -9, idleT = 0, planMs = 0, prevX = 0, prevY = 0;
 	const rayX = new Float32Array(72), rayY = new Float32Array(72);
 	const hitX = new Float32Array(HIST * 72), hitY = new Float32Array(HIST * 72);
 	const hitN = new Int32Array(HIST), hitT = new Float64Array(HIST);
@@ -150,15 +152,20 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	}
 
 	// 8-connected BFS from s into queue[0..qn). Mode 0: cells clear of no-go and margins.
-	// Mode 1: known free cells outside no-go; returns the nearest frontier cell clear of margins, or -1.
+	// Mode 1: known free cells outside no-go; returns the nearest frontier cell clear of margins
+	// at least MIN_LEG away (the nearest one if none is), or -1.
 	function bfs(s: number, mode: number) {
 		run++;
 		qn = 0;
 		queue[qn++] = s;
 		seen[s] = run;
+		let near = -1;
 		for (let q = 0; q < qn; q++) {
 			const k = queue[q], i = k % NX, j = (k / NX) | 0;
-			if (mode && k !== s && !stat[k] && !bad[k] && frontierCell(k)) return k;
+			if (mode && k !== s && !stat[k] && !bad[k] && frontierCell(k)) {
+				if (Math.hypot(cx(k) - cx(s), cy(k) - cy(s)) >= MIN_LEG) return k;
+				if (near < 0) near = k;
+			}
 			for (let m = 0; m < 8; m++) {
 				const a = i + DI[m], b = j + DJ[m];
 				if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
@@ -168,7 +175,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				queue[qn++] = c;
 			}
 		}
-		return -1;
+		return near;
 	}
 
 	function push(c: number, f: number) {
@@ -325,22 +332,29 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 
 	function arrive() {
 		if (exploring && frontierCell(goal)) bad[goal] = 1;
+		prevX = goalX;
+		prevY = goalY;
 		hasGoal = noPath = false;
 		remain = 0;
 		idleT = simT;
 		clearPath();
 	}
 
-	// Idle: head for the nearest frontier; once the map is done, wander between free cells.
+	// Idle: head for the nearest frontier worth the trip; once the map is done, patrol: sample
+	// cells from the farther half of the reachable area (BFS order ≈ distance) and take the one
+	// farthest from both the robot and the previous goal, so legs are long and alternate ends.
 	function explore() {
 		lastExplore = simT;
 		const f = bfs(cellAt(x, y), 1);
 		if (f >= 0) return setGoal(f, true);
-		if (simT - idleT < 3) return;
-		for (let n = 0; n < 20 && qn > 1; n++) {
-			const k = queue[1 + ((Math.random() * (qn - 1)) | 0)];
-			if (!stat[k]) return setGoal(k, false);
+		if (simT - idleT < 1.2 || qn < 2) return;
+		let pick = -1, score = -1;
+		for (let n = 0; n < 16; n++) {
+			const k = queue[(qn / 2 + Math.random() * (qn / 2)) | 0];
+			const d = Math.hypot(cx(k) - x, cy(k) - y) + 0.5 * Math.hypot(cx(k) - prevX, cy(k) - prevY);
+			if (!stat[k] && d > score) (score = d), (pick = k);
 		}
+		if (pick >= 0) setGoal(pick, false);
 	}
 
 	// 2D lidar: DDA per ray; free along the ray, a hit where it meets a no-go cell (text or photo).
@@ -441,7 +455,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		ctx.save();
 		ctx.translate(px, py);
 		ctx.rotate(a);
-		ctx.scale(size, size);
 		ctx.fillStyle = ink;
 		ctx.fillRect(-10, -21, 20, 3);
 		ctx.fillRect(-10, 18, 20, 3);
@@ -461,7 +474,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				ctx.fillRect(-12 + c * 3.5, -10.5 + r * 3.5, 3.5, 3.5);
 			}
 		ctx.restore();
-		if (mobile) return;
 
 		// Camera detection: axis-aligned box around the rotated marker.
 		const s = Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)), half = 10.5 * s + 4;
@@ -519,7 +531,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		}
 		drawRobot(rx, ry);
 
-		if (!mobile && (still || simT - shown >= 0.1)) {
+		if (still || simT - shown >= 0.1) {
 			shown = simT;
 			spans[0].textContent = row('x', x.toFixed(1), ' mm');
 			spans[1].textContent = row('y', y.toFixed(1), ' mm');
@@ -561,7 +573,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		layer.width = canvas.width;
 		layer.height = canvas.height;
 		layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-		if (mobile) return;
 		layerCtx.strokeStyle = grid;
 		layerCtx.lineWidth = 1;
 		layerCtx.beginPath();
@@ -590,6 +601,11 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		const key = [c.width, c.height, ...rects.flatMap((r) => [r.x, r.y, r.width, r.height])].map(Math.round).join();
 		if (key === layout) return;
 		layout = key;
+		// Hidden below md: nothing to build or run until the canvas has a size.
+		if (!canvas.clientWidth) {
+			parked = true;
+			return sync();
+		}
 
 		const dpr = devicePixelRatio || 1;
 		w = canvas.clientWidth;
@@ -598,20 +614,14 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		canvas.height = Math.round(h * dpr);
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.font = font;
-		mobile = w < 768;
-		CS = mobile ? 50 : 25;
-		RAYS = mobile ? 36 : 72;
-		size = mobile ? 0.7 : 1;
 		sx = w / W;
 		sy = h / H;
 		gx = step(sx);
 		gy = step(sy);
-		NX = W / CS;
-		NY = H / CS;
-		if (NX * NY !== N) alloc(NX * NY);
+		if (!N) alloc(NX * NY);
 
 		// No-go pad and edge margin in px, from the drawn robot half-size and its label.
-		const half = 21 * size, pad = mobile ? 22 : 36, edge = half + 3;
+		const half = 21, pad = 36, edge = half + 3;
 
 		mappable = 0;
 		for (let k = 0; k < N; k++) {

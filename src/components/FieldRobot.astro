@@ -1,7 +1,7 @@
 ---
 // Hero background: a mini navigation stack on a 3000 × 2000 mm field. The obstacles are
-// the [data-nogo] elements (hero text, photo, readout, reset link): a 2D lidar sees their
-// edges, a log-odds grid maps the free space around them (they are never mapped, painted or
+// the [data-nogo] elements (hero text, photo, readout, reset link), boxed tightly per text line
+// and image: a 2D lidar sees their edges, a log-odds grid maps the free space around them (they are never mapped, painted or
 // driven through), A* plans (unknown space optimistic, line-of-sight smoothed) and pure
 // pursuit follows. Known cells decay back to unknown over ~60 s, so exploring never ends.
 // Only rays, hits, path, goal and robot are drawn; the map itself stays invisible. Reduced motion: a pre-explored static map with
@@ -46,7 +46,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const UNKNOWN = 2; // A* cost multiplier for unknown cells
 	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
 	const MIN_LEG = 600; // mm: frontiers closer than this are only used when nothing farther is left
-	const SCALE = 1.5, PAD = 52, BUFFER = 12, EDGE = 48; // robot size; px: no-go beyond each element (body + label + gap), planning buffer, hero inset
+	const SCALE = 1.5, PAD = 40, BUFFER = 10, EDGE = 48; // robot size; px: no-go beyond each text line / image (body + label + gap), planning buffer, hero inset
 	const CORNER = Math.PI / 6, V_CORNER = 100; // bends sharper than 30° are driven to, at ≤ 100 mm/s
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
 	const BITS = ['0110', '0010', '0111', '0001'];
@@ -572,15 +572,32 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		for (let y = 2 * gy; y < H; y += 2 * gy) if (!near(12, h - y * sy - 6)) layerCtx.fillText(`${y}`, 4, h - y * sy - 3);
 	}
 
+	// Tight boxes around what a no-go element shows: each line of text and each leaf
+	// element with a size (photo, status dot), not the element's whole layout box.
+	const range = document.createRange();
+	function boxes(el: HTMLElement) {
+		const out: DOMRect[] = [];
+		const walk = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+		for (let n: Node | null = walk.currentNode; n; n = walk.nextNode()) {
+			if (n instanceof Element && n.childElementCount) continue;
+			if (!n.textContent!.trim()) {
+				if (n instanceof Element) out.push(n.getBoundingClientRect());
+				continue;
+			}
+			if (n instanceof Element) continue; // its text node follows
+			range.selectNodeContents(n);
+			out.push(...range.getClientRects());
+		}
+		return out.filter((r) => r.width && r.height);
+	}
+
 	// (Re)build everything when the hero's size or the no-go elements change.
 	function init() {
 		const c = canvas.getBoundingClientRect();
 		const rects = nogo
 			.filter((el) => el.offsetWidth)
-			.map((el) => {
-				const r = el.getBoundingClientRect();
-				return new DOMRect(r.left - c.left, r.top - c.top, r.width, r.height);
-			});
+			.flatMap(boxes)
+			.map((r) => new DOMRect(r.left - c.left, r.top - c.top, r.width, r.height));
 		const key = [c.width, c.height, ...rects.flatMap((r) => [r.x, r.y, r.width, r.height])].map(Math.round).join();
 		if (key === layout) return;
 		layout = key;

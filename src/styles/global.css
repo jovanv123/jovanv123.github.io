@@ -13,6 +13,9 @@
 	--inset-shadow-*: initial;
 	--drop-shadow-*: initial;
 	--text-shadow-*: initial;
+
+	/* Hero readout switches from a 3-column strip to a column once the right margin fits it. */
+	--breakpoint-wide: 87.5rem;
 }
 
 @theme inline {

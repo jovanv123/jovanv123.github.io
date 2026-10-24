@@ -30,18 +30,18 @@ theme:
   borders: "1px hairline"         # rules between sections/items, no boxes
   shadows: false
   spacing_scale: "spacious"
-  animations: false               # nothing on scroll; the hero arm is the only motion
-  cursor_effects: true            # hero robot arm follows the cursor
+  animations: false               # nothing on scroll; the hero robot is the only motion
+  cursor_effects: true            # hero field robot: click the grid to set its goal
 
 colors:
   background:    "#FFFFFF"
   surface:       "#F4F4F5"        # footer band — flat fill, no cards
   text:          "#0A0A0A"
   muted:         "#71717A"
-  accent:        "#4169E1"        # ONE accent: focus, status dot, hero name, arm end-effector, timeline
+  accent:        "#4169E1"        # ONE accent: focus, status dot, hero name, field robot, timeline
   accent-hover:  "#2F55C9"        # accent on hover/active
   border:        "#E4E4E7"
-  line:          "#D4D4D8"        # hero robot arm line art
+  line:          "#D4D4D8"        # hero robot trail
   inverse:       "#0A0A0A"        # black nav bar
   inverse-text:  "#FFFFFF"        # nav logo, active/hover links
   inverse-muted: "#A1A1AA"        # inactive nav links (#71717A fails contrast on black)

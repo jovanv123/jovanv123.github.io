@@ -1,0 +1,336 @@
+---
+// Hero background: a differential-drive robot on a 3000 × 2000 mm field, seen by
+// an overhead camera. Rotate-then-translate control with a trapezoidal profile;
+// idle it wanders between free grid intersections, a click sets the goal.
+// Elements marked [data-nogo] (hero text, photo, readout) are no-go rectangles
+// the robot never paths through. Static pose under prefers-reduced-motion.
+// Under 768px only the robot shows, driving slowly along the bottom edge.
+const readout = [
+	['x', 'x'],
+	['y', 'y'],
+	['th', 'θ'],
+	['v', 'v'],
+	['w', 'ω'],
+	['goal', 'goal'],
+];
+---
+
+<div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+	<canvas data-field class="size-full"></canvas>
+	<p data-readout data-nogo class="absolute right-8 bottom-4 hidden grid-cols-3 gap-x-6 font-mono text-xs text-muted md:grid wide:grid-cols-1">
+		{readout.map(([key]) => <span data-key={key} class="whitespace-pre"></span>)}
+	</p>
+</div>
+
+<script>
+	type P = { x: number; y: number };
+	type Box = { x0: number; x1: number; y0: number; y1: number };
+
+	const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-field]')!;
+	const hero = canvas.closest('section')!;
+	const out = document.querySelector<HTMLElement>('[data-readout]')!;
+	const cells = Object.fromEntries([...out.children].map((el) => [(el as HTMLElement).dataset.key!, el]));
+	const nogo = [...hero.querySelectorAll<HTMLElement>('[data-nogo]')];
+	const ctx = canvas.getContext('2d')!;
+	const css = getComputedStyle(document.documentElement);
+	const color = (name: string) => css.getPropertyValue(`--site-color-${name}`).trim();
+	const [grid, trailColor, ink, accent, paper, muted] = ['border', 'line', 'text', 'accent', 'background', 'muted'].map(color);
+	const font = `10px ${getComputedStyle(out).fontFamily}`;
+
+	const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const W = 3000, H = 2000; // field, mm
+	const A_MAX = 600, W_MAX = 2, DT = 0.01; // mm/s², rad/s, 100 Hz
+	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
+	const BITS = ['0110', '0010', '0111', '0001'];
+	const PAD = 36; // px clearance around no-go elements: robot half-diagonal + label
+
+	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, mobile = false;
+	let boxes: Box[] = [], nodes: P[] = [], nx = 0;
+	let holes: DOMRect[] = []; // no-go elements in canvas px, kept clear of the grid
+	let pose = { x: 0, y: 0, th: Math.PI }, v = 0, om = 0, vMax = 400;
+	let path: P[] = [], goal: P | null = null, pending: P | null = null, turning = true;
+	let idle = 0, simT = 0, acc = 0, last = 0, shown = -1, visible = false;
+	let trail: { x: number; y: number; t: number }[] = [];
+
+	const clamp = (a: number, m: number) => Math.max(-m, Math.min(m, a));
+	const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+	const px = (p: P) => ({ x: p.x * sx, y: h - p.y * sy });
+	const inBox = (p: P, b: Box) => p.x > b.x0 && p.x < b.x1 && p.y > b.y0 && p.y < b.y1;
+	const free = (p: P) =>
+		p.x * sx >= 24 && p.x * sx <= w - 24 && p.y * sy >= 24 && p.y * sy <= h - 24 && !boxes.some((b) => inBox(p, b));
+
+	// Straight segment a→b stays in free space (sampled every ~4px).
+	function clear(a: P, b: P) {
+		const n = Math.ceil(Math.hypot((b.x - a.x) * sx, (b.y - a.y) * sy) / 4);
+		for (let k = 0; k <= n; k++) if (!free({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n })) return false;
+		return true;
+	}
+
+	// Grid step (mm) whose on-screen cell is closest to 48px.
+	const step = (s: number) => [50, 100, 200, 250, 500].reduce((m, c) => (Math.abs(c * s - 48) < Math.abs(m * s - 48) ? c : m));
+
+	// BFS over free grid intersections (8-connected), seeded from nodes visible from the robot.
+	function search() {
+		const prev = new Int32Array(nodes.length).fill(-2);
+		const queue: number[] = [];
+		nodes.forEach((n, i) => {
+			if (free(n) && Math.hypot((n.x - pose.x) / gx, (n.y - pose.y) / gy) < 1.5 && clear(pose, n)) {
+				prev[i] = -1;
+				queue.push(i);
+			}
+		});
+		for (let q = 0; q < queue.length; q++) {
+			const i = queue[q], cx = i % nx;
+			for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+				const j = i + dx + dy * nx;
+				if (cx + dx < 0 || cx + dx >= nx || j < 0 || j >= nodes.length || prev[j] !== -2) continue;
+				if (!free(nodes[j]) || !clear(nodes[i], nodes[j])) continue;
+				prev[j] = i;
+				queue.push(j);
+			}
+		}
+		return { prev, reached: queue };
+	}
+
+	// Path to the reachable node nearest the target, shortcut to the fewest straight legs.
+	function plan(target: P) {
+		const { prev, reached } = search();
+		if (!reached.length) return;
+		let end = reached[0];
+		for (const i of reached) if (Math.hypot(nodes[i].x - target.x, nodes[i].y - target.y) < Math.hypot(nodes[end].x - target.x, nodes[end].y - target.y)) end = i;
+		const chain: P[] = [];
+		for (let i = end; i >= 0; i = prev[i]) chain.unshift(nodes[i]);
+		path = [];
+		let from: P = pose;
+		while (chain.length) {
+			let k = chain.length - 1;
+			while (k > 0 && !clear(from, chain[k])) k--;
+			from = chain[k];
+			path.push(from);
+			chain.splice(0, k + 1);
+		}
+		goal = path[path.length - 1];
+		turning = true;
+	}
+
+	function wander() {
+		if (mobile) {
+			const y = 20 / sy, ends = [{ x: 30 / sx, y }, { x: W - 30 / sx, y }];
+			path = [pose.x > W / 2 ? ends[0] : ends[1]];
+			goal = path[0];
+			turning = true;
+			return;
+		}
+		const { reached } = search();
+		const far = reached.filter((i) => Math.hypot((nodes[i].x - pose.x) / gx, (nodes[i].y - pose.y) / gy) > 3);
+		const pick = far[Math.floor(Math.random() * far.length)] ?? reached[Math.floor(Math.random() * reached.length)];
+		if (pick !== undefined) plan(nodes[pick]);
+	}
+
+	// One 10ms step: unicycle kinematics under the rotate-then-translate controller.
+	function tick() {
+		simT += DT;
+		const g = path[0];
+		if (pending && v === 0) {
+			plan(pending);
+			pending = null;
+		} else if (pending || !g) {
+			v = Math.max(0, v - A_MAX * DT); // brake along the current leg before replanning
+			om = 0;
+			if (!g && (idle += DT) > 1.2) (idle = 0), wander();
+		} else {
+			const dx = g.x - pose.x, dy = g.y - pose.y, d = Math.hypot(dx, dy);
+			const e = wrap(Math.atan2(dy, dx) - pose.th);
+			if (turning) {
+				v = 0;
+				om = clamp(4 * e, W_MAX);
+				if (Math.abs(e) < 0.004 || d < 1) {
+					turning = false;
+					om = 0;
+					if (d >= 1) pose.th = Math.atan2(dy, dx); // settle exactly on the bearing
+				}
+			} else {
+				// Profile on the distance left along the heading, so a tiny lateral offset can't overshoot.
+				const along = Math.max(0, dx * Math.cos(pose.th) + dy * Math.sin(pose.th));
+				v = Math.min(v + A_MAX * DT, vMax, Math.sqrt(2 * A_MAX * along));
+				if (along < 0.5 || v * DT >= along) {
+					pose.x = g.x;
+					pose.y = g.y;
+					v = 0;
+					path.shift();
+					turning = true;
+					if (!path.length) goal = null;
+				}
+			}
+		}
+		pose.x += v * Math.cos(pose.th) * DT;
+		pose.y += v * Math.sin(pose.th) * DT;
+		pose.th = wrap(pose.th + om * DT);
+		trail.push({ x: pose.x, y: pose.y, t: simT });
+		while (trail[0].t < simT - 3) trail.shift();
+	}
+
+	function drawRobot() {
+		const p = px(pose);
+		const a = -Math.atan2(sy * Math.sin(pose.th), sx * Math.cos(pose.th)); // heading on screen
+		ctx.save();
+		ctx.translate(p.x, p.y);
+		ctx.rotate(a);
+		if (mobile) ctx.scale(0.7, 0.7);
+		ctx.fillStyle = ink;
+		ctx.fillRect(-10, -21, 20, 3);
+		ctx.fillRect(-10, 18, 20, 3);
+		ctx.strokeStyle = ink;
+		ctx.strokeRect(-18, -18, 36, 36);
+		ctx.fillStyle = accent;
+		ctx.beginPath();
+		ctx.moveTo(16, 0);
+		ctx.lineTo(11, -4);
+		ctx.lineTo(11, 4);
+		ctx.fill();
+		for (let r = 0; r < 6; r++)
+			for (let c = 0; c < 6; c++) {
+				const white = r > 0 && r < 5 && c > 0 && c < 5 && BITS[r - 1][c - 1] === '1';
+				ctx.fillStyle = white ? paper : ink;
+				ctx.fillRect(-12 + c * 3.5, -10.5 + r * 3.5, 3.5, 3.5);
+			}
+		ctx.restore();
+		if (mobile) return;
+
+		// Camera detection: axis-aligned box around the rotated marker.
+		const s = Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)), half = 10.5 * s + 4;
+		const cx = p.x - 1.5 * Math.cos(a), cy = p.y - 1.5 * Math.sin(a);
+		ctx.strokeStyle = ctx.fillStyle = accent;
+		ctx.setLineDash([3, 3]);
+		ctx.strokeRect(cx - half, cy - half, 2 * half, 2 * half);
+		ctx.setLineDash([]);
+		ctx.fillText('aruco id=7', Math.min(cx - half, w - ctx.measureText('aruco id=7').width - 4), cy - half - 4);
+	}
+
+	function draw() {
+		ctx.clearRect(0, 0, w, h);
+		ctx.lineWidth = 1;
+		ctx.font = font;
+		if (!mobile) {
+			ctx.strokeStyle = grid;
+			ctx.fillStyle = muted;
+			ctx.beginPath();
+			for (let x = gx; x < W; x += gx) (ctx.moveTo(Math.round(x * sx) + 0.5, 0), ctx.lineTo(Math.round(x * sx) + 0.5, h));
+			for (let y = gy; y < H; y += gy) (ctx.moveTo(0, Math.round(h - y * sy) + 0.5), ctx.lineTo(w, Math.round(h - y * sy) + 0.5));
+			ctx.stroke();
+			for (const r of holes) ctx.clearRect(r.x - 8, r.y - 8, r.width + 16, r.height + 16);
+			// Axis ticks in mm, every other line, skipped where they would touch content.
+			ctx.globalAlpha = 0.6;
+			for (let x = 2 * gx; x < W; x += 2 * gx) if (!boxes.some((b) => inBox({ x, y: 8 / sy }, b))) ctx.fillText(`${x}`, x * sx + 3, h - 4);
+			for (let y = 2 * gy; y < H; y += 2 * gy) if (!boxes.some((b) => inBox({ x: 12 / sx, y }, b))) ctx.fillText(`${y}`, 4, h - y * sy - 3);
+			ctx.globalAlpha = 1;
+
+			ctx.strokeStyle = trailColor;
+			for (let i = 1; i < trail.length; i++) {
+				const a = px(trail[i - 1]), b = px(trail[i]);
+				ctx.globalAlpha = 1 - (simT - trail[i].t) / 3;
+				ctx.beginPath();
+				ctx.moveTo(a.x, a.y);
+				ctx.lineTo(b.x, b.y);
+				ctx.stroke();
+			}
+			ctx.globalAlpha = 1;
+
+			if (goal) {
+				const g = px(goal);
+				ctx.strokeStyle = accent;
+				ctx.beginPath();
+				ctx.moveTo(g.x - 5, g.y);
+				ctx.lineTo(g.x + 5, g.y);
+				ctx.moveTo(g.x, g.y - 5);
+				ctx.lineTo(g.x, g.y + 5);
+				ctx.stroke();
+			}
+		}
+		drawRobot();
+
+		if (!mobile && simT - shown >= 0.1) {
+			shown = simT;
+			const row = (label: string, value: string, unit: string) => `${label}${value.padStart(9)}${unit}`;
+			cells.x.textContent = row('x', pose.x.toFixed(1), ' mm');
+			cells.y.textContent = row('y', pose.y.toFixed(1), ' mm');
+			cells.th.textContent = row('θ', ((pose.th * 180) / Math.PI).toFixed(1), '°');
+			cells.v.textContent = row('v', v.toFixed(1), ' mm/s');
+			cells.w.textContent = row('ω', om.toFixed(2), ' rad/s');
+			cells.goal.textContent = goal ? `goal (${Math.round(goal.x)}, ${Math.round(goal.y)})` : 'goal —';
+		}
+	}
+
+	function resize() {
+		const dpr = devicePixelRatio || 1;
+		w = canvas.clientWidth;
+		h = canvas.clientHeight;
+		canvas.width = Math.round(w * dpr);
+		canvas.height = Math.round(h * dpr);
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		sx = w / W;
+		sy = h / H;
+		const wasMobile = mobile;
+		mobile = w < 768;
+		vMax = mobile ? 150 : 400;
+		gx = step(sx);
+		gy = step(sy);
+
+		const c = canvas.getBoundingClientRect();
+		holes = mobile
+			? []
+			: nogo.filter((el) => el.offsetWidth).map((el) => {
+					const r = el.getBoundingClientRect();
+					return new DOMRect(r.left - c.left, r.top - c.top, r.width, r.height);
+				});
+		boxes = holes.map((r) => ({
+			x0: (r.left - PAD) / sx,
+			x1: (r.right + PAD) / sx,
+			y0: (h - r.bottom - PAD) / sy,
+			y1: (h - r.top + PAD) / sy,
+		}));
+		nx = Math.floor(W / gx) - 1;
+		nodes = [];
+		for (let y = gy; y < H; y += gy) for (let x = gx; x <= nx * gx; x += gx) nodes.push({ x, y });
+
+		// Restart from the bottom-right corner when the layout no longer fits the current pose.
+		if (mobile !== wasMobile || (mobile ? Math.abs(pose.y * sy - 20) > 1 : !free(pose))) {
+			const start = mobile ? { x: W - 30 / sx, y: 20 / sy } : nodes.filter(free).sort((a, b) => b.x - b.y * 1.5 - (a.x - a.y * 1.5))[0];
+			if (start) pose = { x: start.x, y: start.y, th: Math.PI };
+			path = [];
+			goal = pending = null;
+			trail = [];
+			v = om = 0;
+		}
+		draw();
+	}
+
+	function frame(now: number) {
+		if (!visible) return;
+		acc += Math.min((now - last) / 1000, 0.1);
+		last = now;
+		for (; acc >= DT; acc -= DT) tick();
+		draw();
+		requestAnimationFrame(frame);
+	}
+
+	const sizes = new ResizeObserver(resize);
+	[canvas, ...nogo].forEach((el) => sizes.observe(el));
+
+	if (!still) {
+		hero.addEventListener('click', (e) => {
+			if (mobile || (e.target as Element).closest('a, [data-nogo]')) return;
+			const r = canvas.getBoundingClientRect();
+			pending = { x: (e.clientX - r.left) / sx, y: (r.bottom - e.clientY) / sy };
+			path = [];
+		});
+		new IntersectionObserver(([entry]) => {
+			const was = visible;
+			visible = entry.isIntersecting;
+			if (visible && !was) {
+				last = performance.now();
+				requestAnimationFrame(frame);
+			}
+		}).observe(canvas);
+	}
+</script>

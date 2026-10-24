@@ -25,20 +25,23 @@ theme:
   max_width: "1100px"
   column_width: "800px"           # project page column: header, media, figures
   text_width: "680px"             # project page body text
+  hero_height: "90vh"             # home hero min-height
+  photo_size: "360px"             # hero photo, square
   border_radius: "0"              # sharp everywhere
   borders: "1px hairline"         # rules between sections/items, no boxes
   shadows: false
   spacing_scale: "spacious"
-  animations: false               # at most: fade-in on load, nothing on scroll
-  cursor_effects: false
+  animations: false               # nothing on scroll; the hero arm is the only motion
+  cursor_effects: true            # hero robot arm follows the cursor
 
 colors:
   background:    "#FFFFFF"
   surface:       "#F4F4F5"        # footer band — flat fill, no cards
   text:          "#0A0A0A"
   muted:         "#71717A"
-  accent:        "#FF5F1F"        # ONE accent: links on hover, focus, status dot
+  accent:        "#FF5F1F"        # ONE accent: hover, focus, status dot, hero name, arm end-effector
   border:        "#E4E4E7"
+  line:          "#D4D4D8"        # hero robot arm line art
   inverse:       "#0A0A0A"        # black nav bar
   inverse-text:  "#FFFFFF"        # nav logo, active/hover links
   inverse-muted: "#A1A1AA"        # inactive nav links (#71717A fails contrast on black)
@@ -58,20 +61,21 @@ nav:
   logo_text: "Jovan Vasić"
   sticky: true
   links:
-    - { label: "Work",       href: "#projects" }
-    - { label: "Focus",      href: "#focus" }
-    - { label: "Experience", href: "#experience" }
-    - { label: "CV",         href: "assets/cv.pdf" }
-    - { label: "Contact",    href: "#contact" }
+    - { label: "Work",    href: "#work" }
+    - { label: "About",   href: "#about" }
+    - { label: "CV",      href: "assets/cv.pdf" }
+    - { label: "Contact", href: "#contact" }
 
 # ------------------------------------------------------------
 #  CONTENT
 # ------------------------------------------------------------
 profile:
   name: "Jovan Vasić"
-  role: "Robotics / AI Engineer"   # shown under the name in the hero
+  role: "Robotics / AI Engineer"
+  greeting: "Hey, I’m"            # hero: "<greeting> <name>." with the name in accent
+  tagline: "Mechatronics engineer building robots that see and manipulate. MSc MRBE @ TUM."
   location: "Munich, DE"
-  photo: ""                       # optional; this layout works without one
+  photo: "me.jpg"                 # in src/assets/, square crop; a framed placeholder shows until it exists
   email: ""                       # TODO
   cv: "assets/cv.pdf"
   status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot
@@ -99,8 +103,12 @@ focus:                            # area / description / topics
       text: "Real-time control loops, motion profiling and actuator drivers on microcontrollers; ML deployment on edge hardware."
       topics: ["STM32", "C", "PID", "TFLite Micro"]
 
+featured:
+  heading: "Featured work"        # light-gray band, 3 poster cards
+  count: 3
+
 projects:
-  heading: "Selected work"
+  heading: "All projects"
   layout: "list"                  # full-width rows separated by rules
 
 experience:
@@ -169,11 +177,11 @@ socials:
   scholar:  ""                    # once the paper is out
   youtube:  ""                    # optional, for long demo videos
 
-footer:                           # multi-column, like the reference
+footer:                           # black, multi-column, matches the nav
   columns:
     - { heading: "About",    text: "Mechatronics engineer. Munich, DE." }
-    - { heading: "Contact",  text: "" }       # email
-    - { heading: "Elsewhere", text: "" }      # GitHub · LinkedIn
+    - { heading: "Contact",  text: "" }       # email + CV, filled from profile
+    - { heading: "Elsewhere", text: "" }      # filled from socials
   text: "© 2026 Jovan Vasić"
   show_back_to_top: false
 

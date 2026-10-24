@@ -1,5 +1,5 @@
 ---
-import { socialLinks, type Site } from '../lib/site';
+import { resolveHref, socialLinks, type Site } from '../lib/site';
 
 interface Props {
 	site: Site;
@@ -9,39 +9,43 @@ const { site } = Astro.props;
 const { footer, profile } = site;
 const socials = socialLinks(site);
 
-// Contact and Elsewhere are filled from profile.email and socials; columns with nothing to show are hidden.
-const columns = footer.columns
-	.map((column) => ({
-		...column,
-		email: column.heading === 'Contact' ? profile.email : '',
-		links: column.heading === 'Elsewhere' ? socials : [],
-	}))
-	.filter((column) => column.text || column.email || column.links.length > 0);
+// Contact is filled from profile (email, CV), Elsewhere from socials; "—" until those exist.
+const columns = footer.columns.map((column) => {
+	const links =
+		column.heading === 'Contact'
+			? [
+					profile.email ? { label: profile.email, href: `mailto:${profile.email}` } : null,
+					profile.cv ? { label: 'CV (PDF)', href: resolveHref(profile.cv) } : null,
+				].filter((link) => link !== null)
+			: column.heading === 'Elsewhere'
+				? socials
+				: [];
+	return { ...column, links };
+});
+
+const link = 'text-inverse-text no-underline decoration-accent hover:text-inverse-text hover:underline';
 ---
 
-<footer class="border-t border-border bg-surface">
+<footer class="bg-inverse text-inverse-text">
 	<div class="mx-auto max-w-content px-4 md:px-8">
 		<div class="grid gap-10 py-14 sm:grid-cols-3">
 			{columns.map((column) => (
 				<section>
-					<h2 class="meta mb-3">{column.heading}</h2>
+					<h2 class="meta mb-3 text-inverse-muted">{column.heading}</h2>
 					{column.text && <p class="text-sm">{column.text}</p>}
-					{column.email && (
-						<p class="text-sm"><a href={`mailto:${column.email}`}>{column.email}</a></p>
-					)}
-					{column.links.length > 0 && (
+					{column.links.length > 0 ? (
 						<ul class="space-y-1 text-sm">
-							{column.links.map((social) => (
-								<li><a href={social.href}>{social.label}</a></li>
+							{column.links.map((item) => (
+								<li><a href={item.href} class={link}>{item.label}</a></li>
 							))}
 						</ul>
-					)}
+					) : !column.text && <p class="text-sm text-inverse-muted">—</p>}
 				</section>
 			))}
 		</div>
-		<div class="flex justify-between gap-4 border-t border-border py-6">
-			<p class="meta">{footer.text}</p>
-			{footer.show_back_to_top && <a href="#main" class="meta no-underline">Back to top ↑</a>}
+		<div class="flex justify-between gap-4 border-t border-inverse-muted/30 py-6">
+			<p class="meta text-inverse-muted">{footer.text}</p>
+			{footer.show_back_to_top && <a href="#main" class:list={['meta', link]}>Back to top ↑</a>}
 		</div>
 	</div>
 </footer>

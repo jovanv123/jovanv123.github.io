@@ -22,6 +22,7 @@
 	--color-muted: var(--site-color-muted);
 	--color-accent: var(--site-color-accent);
 	--color-border: var(--site-color-border);
+	--color-line: var(--site-color-line);
 	--color-inverse: var(--site-color-inverse);
 	--color-inverse-text: var(--site-color-inverse-text);
 	--color-inverse-muted: var(--site-color-inverse-muted);
@@ -34,6 +35,7 @@
 	--container-content: var(--site-max-width);
 	--container-column: var(--site-column-width);
 	--container-text: var(--site-text-width);
+	--container-photo: var(--site-photo-size);
 }
 
 @layer base {
@@ -64,6 +66,11 @@
 	:focus-visible {
 		@apply outline-1 outline-offset-4 outline-accent;
 	}
+}
+
+/* Home hero: tall first screen, height from theme.hero_height. */
+@utility min-h-hero {
+	min-height: var(--site-hero-height);
 }
 
 /* Mono metadata label: tags, dates, section labels, status line. */

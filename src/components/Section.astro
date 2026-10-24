@@ -1,15 +1,20 @@
 ---
 interface Props {
 	id: string;
+	/** Two-digit section number, e.g. "03". */
+	index: string;
 	heading: string;
+	/** Set on the first section of a band so it doesn't double the band edge. */
+	ruled?: boolean;
 }
 
-const { id, heading } = Astro.props;
+// Mono label "03 — Focus" over a hairline; sections are separated by hairlines.
+const { id, index, heading, ruled = true } = Astro.props;
 ---
 
-<section id={id} aria-labelledby={`${id}-heading`} class="scroll-mt-24 border-t border-border py-20 md:py-28">
-	<h2 id={`${id}-heading`} class="border-b border-border pb-6 text-3xl tracking-tight md:text-4xl">
-		{heading}
+<section id={id} aria-labelledby={`${id}-heading`} class:list={['scroll-mt-24 py-20 md:py-24', ruled && 'border-t border-border']}>
+	<h2 id={`${id}-heading`} class="meta border-b border-border pb-4 text-text">
+		<span class="text-muted">{index} —</span> {heading}
 	</h2>
 	<slot />
 </section>

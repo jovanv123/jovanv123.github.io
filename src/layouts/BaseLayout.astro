@@ -10,6 +10,8 @@ interface Props {
 	/** Page-specific title; falls back to site.title. */
 	title?: string;
 	description?: string;
+	/** Full-width main; the page sets its own containers (home bands). */
+	bleed?: boolean;
 }
 
 const site = await getSite();
@@ -35,7 +37,7 @@ const description = Astro.props.description ?? site.site.description;
 	</head>
 	<body>
 		<Nav site={site} />
-		<main id="main" class="mx-auto max-w-content px-4 md:px-8">
+		<main id="main" class:list={[!Astro.props.bleed && 'mx-auto max-w-content px-4 md:px-8']}>
 			<slot />
 		</main>
 		<Footer site={site} />

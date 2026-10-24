@@ -1,6 +1,9 @@
 ---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Section from '../components/Section.astro';
+import RobotArm from '../components/RobotArm.astro';
 import VideoLoop from '../components/VideoLoop.astro';
 import { getProjects } from '../lib/projects';
 import { formatDate, getSite, resolveHref, socialLinks } from '../lib/site';
@@ -10,7 +13,11 @@ const { profile, focus, experience, education, skills, contact } = site;
 const socials = socialLinks(site);
 
 const projects = await getProjects();
+const featured = projects.slice(0, site.featured.count);
 
+// Hero photo from src/assets/<profile.photo>; a framed placeholder renders until the file exists.
+const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/*.{jpg,jpeg,png,webp}', { eager: true });
+const photo = profile.photo ? photos[`../assets/${profile.photo}`]?.default : undefined;
 // Contact rows: label | value, hidden when empty.
 const contactRows = [
 	contact.show_email && profile.email
@@ -24,19 +31,66 @@ const contactRows = [
 const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 ---
 
-<BaseLayout>
-	<section id="hero" aria-labelledby="hero-heading" class="pt-16 pb-16 md:pt-28 md:pb-20">
-		<p class="meta flex items-center gap-3">
-			<span class="inline-block size-2 shrink-0 bg-accent" aria-hidden="true"></span>
-			{profile.status}
-		</p>
-		<h1 id="hero-heading" class="mt-10 text-5xl leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
-			{profile.name}
-		</h1>
-		<p class="mt-6 text-2xl tracking-tight text-muted md:text-3xl">{profile.role}</p>
+<BaseLayout bleed>
+	<section id="about" aria-labelledby="hero-heading" class="relative isolate flex min-h-hero scroll-mt-24 items-center overflow-hidden">
+		<RobotArm />
+		<div class="relative mx-auto grid w-full max-w-content items-center gap-12 px-4 pt-12 pb-20 md:grid-cols-12 md:gap-8 md:px-8 md:py-24">
+			<div class="md:order-1 md:col-span-7">
+				<h1 id="hero-heading" class="text-4xl leading-tight tracking-tighter sm:text-5xl lg:text-6xl">
+					{profile.greeting} <span class="text-accent">{profile.name}.</span>
+				</h1>
+				<p class="mt-6 max-w-xl text-xl leading-snug tracking-tight text-muted md:text-2xl">{profile.tagline}</p>
+				<p class="meta mt-10 flex items-center gap-3">
+					<span class="inline-block size-2 shrink-0 bg-accent" aria-hidden="true"></span>
+					{profile.status}
+				</p>
+				<p class="mt-8 flex flex-wrap gap-x-8 gap-y-3">
+					<a href="#work">View work →</a>
+					{profile.cv && <a href={resolveHref(profile.cv)}>CV ↓</a>}
+				</p>
+			</div>
+			<figure class="-order-1 w-full max-w-photo md:order-2 md:col-span-5 md:justify-self-end">
+				<p class="meta mb-2">Fig. 0</p>
+				<div class="aspect-square border border-border bg-background">
+					{photo ? (
+						<Image src={photo} alt={`Portrait of ${profile.name}`} widths={[360, 720]} sizes="(min-width: 768px) 360px, 100vw" class="size-full object-cover" loading="eager" />
+					) : (
+						<div class="meta flex size-full items-center justify-center">Photo</div>
+					)}
+				</div>
+				<figcaption class="meta mt-2 text-right">{profile.location}</figcaption>
+			</figure>
+		</div>
 	</section>
 
-	<Section id="projects" heading={site.projects.heading}>
+	<section id="work" aria-labelledby="work-heading" class="scroll-mt-24 border-y border-border bg-surface">
+		<div class="mx-auto max-w-content px-4 py-20 md:px-8 md:py-24">
+			<h2 id="work-heading" class="meta border-b border-border pb-4 text-text">
+				<span class="text-muted">01 —</span> {site.featured.heading}
+			</h2>
+			<ul class="mt-10 grid gap-6 md:grid-cols-3">
+				{featured.map(({ data }) => (
+					<li>
+						<a href={`/projects/${data.slug}`} class="group flex h-full flex-col border border-border bg-background text-text no-underline hover:border-accent hover:text-text focus-visible:border-accent">
+							{data.media ? (
+								<VideoLoop src={data.media} autoplay={false} preload="none" class="aspect-video w-full border-b border-border object-cover" data-thumb aria-hidden="true" />
+							) : (
+								<div class="meta flex aspect-video w-full items-center justify-center border-b border-border bg-surface" aria-hidden="true">{data.tags[0]}</div>
+							)}
+							<div class="flex flex-1 flex-col gap-2 p-5">
+								<h3 class="text-xl tracking-tight group-hover:text-accent group-focus-visible:text-accent">{data.title}</h3>
+								<p class="font-mono text-xs text-muted">{data.context}</p>
+								<p class="mt-auto border-t border-border pt-3 font-mono text-sm">{data.result ?? data.year}</p>
+							</div>
+						</a>
+					</li>
+				))}
+			</ul>
+		</div>
+	</section>
+
+	<div class="mx-auto max-w-content px-4 md:px-8">
+	<Section id="projects" index="02" heading={site.projects.heading} ruled={false}>
 		<ol class="divide-y divide-border">
 			{projects.map(({ data }) => (
 				<li>
@@ -71,7 +125,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</ol>
 	</Section>
 
-	<Section id="focus" heading={focus.heading}>
+	<Section id="focus" index="03" heading={focus.heading}>
 		<ul class="divide-y divide-border">
 			{focus.items.map((item) => (
 				<li class={row}>
@@ -86,7 +140,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</ul>
 	</Section>
 
-	<Section id="experience" heading={experience.heading}>
+	<Section id="experience" index="04" heading={experience.heading}>
 		<ol class="divide-y divide-border">
 			{experience.items.map((item) => (
 				<li class={row}>
@@ -108,7 +162,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</ol>
 	</Section>
 
-	<Section id="education" heading={education.heading}>
+	<Section id="education" index="05" heading={education.heading}>
 		<ol class="divide-y divide-border">
 			{education.items.map((item) => (
 				<li class={row}>
@@ -126,7 +180,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</ol>
 	</Section>
 
-	<Section id="skills" heading={skills.heading}>
+	<Section id="skills" index="06" heading={skills.heading}>
 		<dl class="divide-y divide-border">
 			{skills.groups.map((group) => (
 				<div class="grid gap-x-8 gap-y-2 py-5 md:grid-cols-12">
@@ -137,7 +191,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 		</dl>
 	</Section>
 
-	<Section id="contact" heading={contact.heading}>
+	<Section id="contact" index="07" heading={contact.heading}>
 		{contact.message && <p class="mt-8 max-w-2xl text-xl leading-relaxed md:text-2xl">{contact.message}</p>}
 		<dl class="divide-y divide-border">
 			{contactRows.map((item) => (
@@ -148,10 +202,11 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 			))}
 		</dl>
 	</Section>
+	</div>
 </BaseLayout>
 
 <script>
-	// Thumbnails (preload="none") load and play on desktop hover and reset on leave.
+	// Row thumbnails and featured cards (preload="none") load and play on desktop hover and reset on leave.
 	// Under prefers-reduced-motion they stay posters.
 	const still = window.matchMedia('(prefers-reduced-motion: reduce)');
 	const desktop = window.matchMedia('(hover: hover) and (min-width: 64rem)');

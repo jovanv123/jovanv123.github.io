@@ -11,6 +11,7 @@ const palette = z.object({
 	muted: z.string(),
 	accent: z.string(),
 	border: z.string(),
+	line: z.string(),
 	inverse: z.string(),
 	'inverse-text': z.string(),
 	'inverse-muted': z.string(),
@@ -33,6 +34,8 @@ export const siteSchema = z.object({
 		max_width: z.string(),
 		column_width: z.string(),
 		text_width: z.string(),
+		hero_height: z.string(),
+		photo_size: z.string(),
 		border_radius: z.string(),
 		borders: z.string(),
 		shadows: z.boolean(),
@@ -57,6 +60,8 @@ export const siteSchema = z.object({
 	profile: z.object({
 		name: z.string(),
 		role: z.string(),
+		greeting: z.string(),
+		tagline: z.string(),
 		location: z.string(),
 		photo: z.string(),
 		email: z.string(),
@@ -68,6 +73,7 @@ export const siteSchema = z.object({
 		heading,
 		items: z.array(z.object({ title: z.string(), text: z.string(), topics: z.array(z.string()) })),
 	}),
+	featured: z.object({ heading, count: z.number().int() }),
 	projects: z.object({ heading, layout: z.string() }),
 	experience: z.object({
 		heading,

@@ -1,0 +1,161 @@
+---
+// Hero background: planar 3-link arm as line art. The end-effector follows the
+// cursor (CCD IK, joint limits, damping); idle, off-hero or on touch it traces a
+// figure-8. Static pose under prefers-reduced-motion. Decorative only.
+---
+
+<div class="pointer-events-none absolute inset-0" aria-hidden="true">
+	<canvas data-arm class="size-full"></canvas>
+	<p data-arm-readout class="meta absolute bottom-4 left-4 normal-case md:right-8 md:left-auto"></p>
+</div>
+
+<script>
+	const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-arm]')!;
+	const readout = document.querySelector<HTMLElement>('[data-arm-readout]')!;
+	const ctx = canvas.getContext('2d')!;
+	const css = getComputedStyle(document.documentElement);
+	const color = (name: string) => css.getPropertyValue(`--site-color-${name}`).trim();
+	const [line, accent, paper] = [color('line'), color('accent'), color('background')];
+
+	const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const deg = Math.PI / 180;
+	// Joint limits: q1 absolute from +x (y up), q2/q3 relative to the previous link.
+	const limits = [[60 * deg, 180 * deg], [-150 * deg, 150 * deg], [-150 * deg, 150 * deg]];
+	const ratios = [0.4, 0.34, 0.26];
+
+	let w = 0, h = 0, reach = 0, bx = 0, by = 0, lengths = ratios;
+	let q = [120 * deg, -30 * deg, -40 * deg]; // displayed pose
+	let s = [...q]; // IK solution, warm-started each frame to avoid branch flips
+	let goal = { x: 0, y: 0 }, aim = { x: 0, y: 0 };
+	let lastMove = -Infinity, phase = 0.6, visible = false, last = 0;
+
+	// Forward kinematics in y-up coordinates; returns base, joints and end-effector.
+	function chain(angles: number[]) {
+		const pts = [{ x: bx, y: by }];
+		let a = 0;
+		angles.forEach((qi, i) => {
+			a += qi;
+			const p = pts[i];
+			pts.push({ x: p.x + lengths[i] * Math.cos(a), y: p.y + lengths[i] * Math.sin(a) });
+		});
+		return pts;
+	}
+
+	function solve(t: { x: number; y: number }, iterations: number) {
+		for (let n = 0; n < iterations; n++) {
+			for (let i = s.length - 1; i >= 0; i--) {
+				const pts = chain(s);
+				const p = pts[i], e = pts[pts.length - 1];
+				let d = Math.atan2(t.y - p.y, t.x - p.x) - Math.atan2(e.y - p.y, e.x - p.x);
+				d = Math.atan2(Math.sin(d), Math.cos(d));
+				s[i] = Math.min(limits[i][1], Math.max(limits[i][0], s[i] + d));
+			}
+		}
+	}
+
+	// Figure-8 (lemniscate of Gerono) low in the right half, clear of the photo.
+	function figure8(t: number) {
+		return { x: bx - 0.42 * reach + 0.3 * reach * Math.sin(t), y: by + 0.3 * reach + 0.14 * reach * Math.sin(2 * t) };
+	}
+
+	// Keep targets inside the workspace annulus and above the floor.
+	function clampGoal(p: { x: number; y: number }) {
+		const dx = p.x - bx, dy = Math.max(p.y, by + 8) - by;
+		const r = Math.hypot(dx, dy) || 1;
+		const k = Math.min(0.97 * reach, Math.max(0.2 * reach, r)) / r;
+		return { x: bx + dx * k, y: by + dy * k };
+	}
+
+	function draw() {
+		ctx.clearRect(0, 0, w, h);
+		const pts = chain(q).map((p) => ({ x: p.x, y: h - p.y }));
+		ctx.strokeStyle = line;
+		ctx.lineWidth = 1;
+
+		ctx.setLineDash([1, 6]);
+		ctx.beginPath();
+		ctx.arc(bx, h - by, reach, 0, 2 * Math.PI);
+		ctx.stroke();
+		ctx.setLineDash([]);
+
+		ctx.beginPath();
+		ctx.moveTo(bx - 16, h - by);
+		ctx.lineTo(bx + 16, h - by);
+		pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+		ctx.stroke();
+
+		pts.forEach((p, i) => {
+			const end = i === pts.length - 1;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, end ? 3.5 : 3, 0, 2 * Math.PI);
+			ctx.fillStyle = end ? accent : paper;
+			ctx.fill();
+			if (!end) ctx.stroke();
+		});
+
+		readout.textContent = q.map((qi, i) => `q${i + 1} ${(qi / deg).toFixed(1)}°`).join('  ');
+	}
+
+	function resize() {
+		const dpr = devicePixelRatio || 1;
+		w = canvas.clientWidth;
+		h = canvas.clientHeight;
+		canvas.width = Math.round(w * dpr);
+		canvas.height = Math.round(h * dpr);
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		const desktop = w >= 1024;
+		const pad = desktop ? 48 : 16;
+		reach = Math.min(w * (desktop ? 0.42 : 0.55), h * 0.8);
+		lengths = ratios.map((r) => r * reach);
+		bx = w - pad;
+		by = pad;
+		if (!goal.x) aim = goal = figure8(phase);
+		if (still) {
+			solve(figure8(phase), 40);
+			q = [...s];
+		}
+		draw();
+	}
+
+	function frame(now: number) {
+		if (!visible) return;
+		const dt = Math.min((now - last) / 1000 || 0, 0.05);
+		last = now;
+		if (now - lastMove > 2500) {
+			phase += (dt * 2 * Math.PI) / 16;
+			goal = figure8(phase);
+		}
+		const ka = 1 - Math.exp(-dt * 5), kq = 1 - Math.exp(-dt * 9);
+		aim = { x: aim.x + (goal.x - aim.x) * ka, y: aim.y + (goal.y - aim.y) * ka };
+		solve(clampGoal(aim), 4);
+		q = q.map((qi, i) => qi + (s[i] - qi) * kq);
+		draw();
+		requestAnimationFrame(frame);
+	}
+
+	new ResizeObserver(resize).observe(canvas);
+
+	if (!still) {
+		addEventListener('pointermove', (e) => {
+			if (e.pointerType !== 'mouse') return;
+			const r = canvas.getBoundingClientRect();
+			const x = e.clientX - r.left, y = e.clientY - r.top;
+			if (x < 0 || y < 0 || x > r.width || y > r.height) {
+				lastMove = -Infinity;
+				return;
+			}
+			goal = { x, y: h - y };
+			lastMove = performance.now();
+		});
+		document.documentElement.addEventListener('mouseleave', () => (lastMove = -Infinity));
+
+		new IntersectionObserver(([entry]) => {
+			const was = visible;
+			visible = entry.isIntersecting;
+			if (visible && !was) {
+				last = performance.now();
+				requestAnimationFrame(frame);
+			}
+		}).observe(canvas);
+	}
+</script>

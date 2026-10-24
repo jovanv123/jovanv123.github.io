@@ -1,10 +1,9 @@
 ---
-// Hero background: a mini navigation stack on a 3000 × 2000 mm field. A diff-drive
-// robot scans hidden obstacles with a 2D lidar into a log-odds occupancy grid, inflates
-// it into a costmap, plans with A* (unknown space optimistic, line-of-sight smoothed)
-// and follows the path with pure pursuit. Idle it explores the nearest frontier; a
-// click sets the goal. [data-nogo] elements (hero text, photo, readout, reset link)
-// are never mapped or driven through. Reduced motion: a pre-explored static map with
+// Hero background: a mini navigation stack on a 3000 × 2000 mm field. The obstacles are
+// the [data-nogo] elements (hero text, photo, readout, reset link): a 2D lidar sees their
+// edges, a log-odds grid maps the free space around them (they are never mapped or driven
+// through), A* plans (unknown space optimistic, line-of-sight smoothed) and pure pursuit
+// follows. Idle it explores the nearest frontier; a click sets the goal. Reduced motion: a pre-explored static map with
 // one planned path. Under 768px: 50 mm cells, 36 rays, no grid lines or readout.
 // Readout lines are padded to a fixed width (monospace) so the box never resizes;
 // the placeholders give it its final size before the script runs.
@@ -38,14 +37,13 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const css = getComputedStyle(document.documentElement);
 	const color = (name: string) => css.getPropertyValue(`--site-color-${name}`).trim();
 	const [grid, rayColor, ink, accent, paper, muted, surface] = ['border', 'line', 'text', 'accent', 'background', 'muted', 'surface'].map(color);
-	const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-	const [inkRgb, accentRgb, surfaceRgb] = [ink, accent, surface].map(rgb);
+	const free = [1, 3, 5].map((i) => parseInt(surface.slice(i, i + 2), 16)); // free cells in `surface`
 	const font = `10px ${getComputedStyle(out).fontFamily}`;
 	const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	const W = 3000, H = 2000, RANGE = 1200, LOOK = 150; // mm
 	const V_MAX = 400, A_MAX = 600, W_MAX = 2, DT = 0.01; // mm/s, mm/s², rad/s, 100 Hz
-	const HIT = 40, MISS = -12, OCC = 20; // log-odds steps and threshold, clamped to ±100
+	const MISS = -12, FREE = -20; // log-odds step per pass-through and free threshold, clamped to -100
 	const UNKNOWN = 2; // A* cost multiplier for unknown cells
 	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
@@ -56,14 +54,13 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	// Layout and grid. stat: bit 1 = no-go (never mapped), bit 2 = too close to the hero edge,
 	// bit 4 = planning buffer around no-go so pure pursuit corner cuts never reach it.
 	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, mobile = false, size = 1, layout = '', parked = true;
-	let CS = 25, NX = 0, NY = 0, N = 0, RAYS = 72, R = 80;
-	let stat = new Uint8Array(0), truth = stat, state = stat, bad = stat, onPath = stat, dflag = stat;
-	let L = new Int8Array(0), inf = new Uint16Array(0); // log-odds; occupied cells within the inflation radius
+	let CS = 25, NX = 0, NY = 0, N = 0, RAYS = 72;
+	let stat = new Uint8Array(0), state = stat, bad = stat, dflag = stat; // state: 0 unknown, 1 free
+	let L = new Int8Array(0); // log-odds
 	let g = new Float32Array(0), fv = g;
-	let came = new Int32Array(0), heap = came, hpos = came, queue = came, cells = came, dlist = came, onList = came;
+	let came = new Int32Array(0), heap = came, hpos = came, queue = came, cells = came, dlist = came;
 	let seen = new Uint32Array(0), closed = seen;
-	let kdx = new Int8Array(0), kdy = kdx, fdx = kdx, fdy = kdx;
-	let run = 0, hn = 0, dn = 0, onN = 0, qn = 0, known = 0, mappable = 0;
+	let run = 0, hn = 0, dn = 0, qn = 0, known = 0, mappable = 0;
 	let img = new ImageData(1, 1);
 
 	// Robot, path and sensor state.
@@ -83,8 +80,8 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const cx = (k: number) => ((k % NX) + 0.5) * CS; // cell centre, mm
 	const cy = (k: number) => (((k / NX) | 0) + 0.5) * CS;
 	const cellAt = (px: number, py: number) => ((py / CS) | 0) * NX + ((px / CS) | 0);
-	// Escape mode (robot inside a margin or inflation) may cross margins and inflation, never no-go or obstacles.
-	const blocked = (c: number, escape: boolean) => stat[c] & 1 || state[c] === 2 || (!escape && (stat[c] !== 0 || inf[c] > 0));
+	// Escape mode (robot inside a margin) may cross margins, never no-go.
+	const blocked = (c: number, escape: boolean) => stat[c] & 1 || (!escape && stat[c] !== 0);
 	const row = (label: string, value: string, unit: string) => `${label}${value.padStart(9)}${unit}`.padEnd(17);
 	// Grid step (mm) whose on-screen cell is closest to 48px.
 	const step = (s: number) => [50, 100, 200, 250, 500].reduce((m, c) => (Math.abs(c * s - 48) < Math.abs(m * s - 48) ? c : m));
@@ -94,60 +91,27 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy);
 	}
 
-	function kernel(r: number) {
-		const c = Math.ceil(r / CS), xs: number[] = [], ys: number[] = [];
-		for (let j = -c; j <= c; j++) for (let i = -c; i <= c; i++) if ((i * i + j * j) * CS * CS <= r * r) xs.push(i), ys.push(j);
-		return [Int8Array.from(xs), Int8Array.from(ys)];
-	}
-
 	function alloc(n: number) {
 		N = n;
-		[stat, truth, state, bad, onPath, dflag] = [0, 0, 0, 0, 0, 0].map(() => new Uint8Array(n));
+		[stat, state, bad, dflag] = [0, 0, 0, 0].map(() => new Uint8Array(n));
 		L = new Int8Array(n);
-		inf = new Uint16Array(n);
 		[g, fv] = [new Float32Array(n), new Float32Array(n)];
-		[came, heap, hpos, queue, cells, dlist, onList] = [0, 0, 0, 0, 0, 0, 0].map(() => new Int32Array(n));
+		[came, heap, hpos, queue, cells, dlist] = [0, 0, 0, 0, 0, 0].map(() => new Int32Array(n));
 		[seen, closed] = [new Uint32Array(n), new Uint32Array(n)];
-		run = onN = 0;
+		run = 0;
 	}
 
 	function dirty(k: number) {
 		if (!dflag[k]) (dflag[k] = 1), (dlist[dn++] = k);
 	}
 
-	// Add s to the inflation count around cell k; returns cells that changed blocked state.
-	function spread(k: number, s: number, live: boolean) {
-		const i = k % NX, j = (k / NX) | 0;
-		let n = 0;
-		for (let m = 0; m < kdx.length; m++) {
-			const a = i + kdx[m], b = j + kdy[m];
-			if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
-			const c = b * NX + a, before = inf[c];
-			inf[c] += s;
-			if (!before === !inf[c]) continue;
-			if (!stat[c]) n++;
-			if (live) {
-				dirty(c);
-				if (s > 0 && onPath[c]) needReplan = true;
-			}
-		}
-		return n;
-	}
-
-	// Log-odds update of one cell; state changes re-inflate incrementally and mark pixels dirty.
+	// Log-odds update of one cell a ray passed through; marks its pixel dirty once it turns free.
 	function observe(k: number, d: number) {
 		const l = L[k] + d;
-		L[k] = l > 100 ? 100 : l < -100 ? -100 : l;
-		const s = L[k] > OCC ? 2 : L[k] < -OCC ? 1 : 0, b = state[k];
-		if (s === b) return;
-		state[k] = s;
-		if (!b) known++;
-		else if (!s) known--;
-		if (b === 2) spread(k, -1, true);
-		if (s === 2) {
-			spread(k, 1, true);
-			if (onPath[k]) needReplan = true;
-		}
+		L[k] = l < -100 ? -100 : l;
+		if (state[k] || L[k] >= FREE) return;
+		state[k] = 1;
+		known++;
 		dirty(k);
 	}
 
@@ -159,11 +123,11 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		for (let n = 0; n < dn; n++) {
 			const k = dlist[n], i = k % NX, r = NY - 1 - ((k / NX) | 0), p = (r * NX + i) * 4;
 			dflag[k] = 0;
-			const c = stat[k] & 1 ? null : state[k] === 2 ? inkRgb : inf[k] ? accentRgb : state[k] === 1 ? surfaceRgb : null;
-			d[p] = c ? c[0] : 0;
-			d[p + 1] = c ? c[1] : 0;
-			d[p + 2] = c ? c[2] : 0;
-			d[p + 3] = !c ? 0 : c === accentRgb ? 38 : 255;
+			const on = state[k] === 1 && !(stat[k] & 1);
+			d[p] = free[0];
+			d[p + 1] = free[1];
+			d[p + 2] = free[2];
+			d[p + 3] = on ? 255 : 0;
 			if (i < x0) x0 = i;
 			if (i > x1) x1 = i;
 			if (r < y0) y0 = r;
@@ -185,8 +149,8 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		return false;
 	}
 
-	// 8-connected BFS from s into queue[0..qn). Mode 0: cells clear of no-go and inflation.
-	// Mode 1: known free cells outside no-go; returns the nearest frontier cell clear of margins and inflation, or -1.
+	// 8-connected BFS from s into queue[0..qn). Mode 0: cells clear of no-go and margins.
+	// Mode 1: known free cells outside no-go; returns the nearest frontier cell clear of margins, or -1.
 	function bfs(s: number, mode: number) {
 		run++;
 		qn = 0;
@@ -194,12 +158,12 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		seen[s] = run;
 		for (let q = 0; q < qn; q++) {
 			const k = queue[q], i = k % NX, j = (k / NX) | 0;
-			if (mode && k !== s && !inf[k] && !stat[k] && !bad[k] && frontierCell(k)) return k;
+			if (mode && k !== s && !stat[k] && !bad[k] && frontierCell(k)) return k;
 			for (let m = 0; m < 8; m++) {
 				const a = i + DI[m], b = j + DJ[m];
 				if (a < 0 || a >= NX || b < 0 || b >= NY) continue;
 				const c = b * NX + a;
-				if (seen[c] === run || (mode ? stat[c] & 1 || state[c] !== 1 : stat[c] || inf[c])) continue;
+				if (seen[c] === run || (mode ? stat[c] & 1 || state[c] !== 1 : stat[c])) continue;
 				seen[c] = run;
 				queue[qn++] = c;
 			}
@@ -251,11 +215,11 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	}
 
 	// A* (octile heuristic, binary heap with decrease-key). Returns t, or the closest
-	// reached free cell when t is unreachable. Inside inflation the robot may escape at a cost.
+	// reached free cell when t is unreachable. Inside a margin the robot may escape at a cost.
 	function astar(s: number, t: number) {
 		run++;
 		hn = 0;
-		const escape = inf[s] > 0 || stat[s] !== 0;
+		const escape = stat[s] !== 0;
 		seen[s] = run;
 		g[s] = 0;
 		came[s] = -1;
@@ -266,7 +230,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 			if (k === t) return k;
 			closed[k] = run;
 			const hk = octile(k, t);
-			if (hk < bestH && state[k] === 1 && !inf[k] && !stat[k]) (bestH = hk), (best = k);
+			if (hk < bestH && state[k] === 1 && !stat[k]) (bestH = hk), (best = k);
 			const i = k % NX, j = (k / NX) | 0;
 			for (let m = 0; m < 8; m++) {
 				const a = i + DI[m], b = j + DJ[m];
@@ -274,7 +238,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				const c = b * NX + a;
 				if (closed[c] === run || blocked(c, escape)) continue;
 				if (m > 3 && (blocked(j * NX + a, escape) || blocked(b * NX + i, escape))) continue; // no corner cutting
-				const cost = g[k] + (m > 3 ? Math.SQRT2 : 1) * (state[c] ? 1 : UNKNOWN) * (inf[c] || stat[c] ? 4 : 1);
+				const cost = g[k] + (m > 3 ? Math.SQRT2 : 1) * (state[c] ? 1 : UNKNOWN) * (stat[c] ? 4 : 1);
 				if (seen[c] !== run) {
 					seen[c] = run;
 					g[c] = cost;
@@ -291,9 +255,9 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		return best;
 	}
 
-	// DDA through the cells of segment (x0,y0)→(x1,y1), in cell units. Marks the path
-	// cells, or returns false at the first blocked cell (line-of-sight check).
-	function trace(x0: number, y0: number, x1: number, y1: number, mark: boolean) {
+	// Line of sight: DDA through the cells of segment (x0,y0)→(x1,y1), in cell units;
+	// false at the first no-go or margin cell.
+	function trace(x0: number, y0: number, x1: number, y1: number) {
 		let i = x0 | 0, j = y0 | 0;
 		const ie = x1 | 0, je = y1 | 0, dx = x1 - x0, dy = y1 - y0;
 		const si = dx > 0 ? 1 : -1, sj = dy > 0 ? 1 : -1, tdx = Math.abs(1 / dx), tdy = Math.abs(1 / dy);
@@ -301,8 +265,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		let ty = dy ? (dy > 0 ? j + 1 - y0 : y0 - j) * tdy : Infinity;
 		for (let n = NX + NY + 2; n > 0; n--) {
 			const k = j * NX + i;
-			if (!mark && (stat[k] || state[k] === 2 || inf[k])) return false;
-			if (mark && !onPath[k]) (onPath[k] = 1), (onList[onN++] = k);
+			if (stat[k]) return false;
 			if (i === ie && j === je) break;
 			if (tx < ty) (tx += tdx), (i += si);
 			else (ty += tdy), (j += sj);
@@ -311,11 +274,10 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	}
 
 	const sight = (a: number, b: number) =>
-		trace((a % NX) + 0.5, ((a / NX) | 0) + 0.5, (b % NX) + 0.5, ((b / NX) | 0) + 0.5, false);
+		trace((a % NX) + 0.5, ((a / NX) | 0) + 0.5, (b % NX) + 0.5, ((b / NX) | 0) + 0.5);
 
 	function clearPath() {
-		for (let n = 0; n < onN; n++) onPath[onList[n]] = 0;
-		onN = wn = seg = 0;
+		wn = seg = 0;
 	}
 
 	function addWay(k: number) {
@@ -347,10 +309,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		for (let a = 0, b = 2; b < pn; b++) if (!sight(cells[a], cells[b])) addWay(cells[(a = b - 1)]);
 		if (pn > 1) addWay(end);
 		remain = 0;
-		for (let n = 1; n < wn; n++) {
-			trace(wx[n - 1] / CS, wy[n - 1] / CS, wx[n] / CS, wy[n] / CS, true);
-			remain += Math.hypot(wx[n] - wx[n - 1], wy[n] - wy[n - 1]);
-		}
+		for (let n = 1; n < wn; n++) remain += Math.hypot(wx[n] - wx[n - 1], wy[n] - wy[n - 1]);
 	}
 
 	function setGoal(k: number, explore: boolean) {
@@ -380,11 +339,11 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		if (simT - idleT < 3) return;
 		for (let n = 0; n < 20 && qn > 1; n++) {
 			const k = queue[1 + ((Math.random() * (qn - 1)) | 0)];
-			if (!inf[k] && !stat[k]) return setGoal(k, false);
+			if (!stat[k]) return setGoal(k, false);
 		}
 	}
 
-	// 2D lidar: DDA per ray against the truth grid; free along the ray, occupied at the hit.
+	// 2D lidar: DDA per ray; free along the ray, a hit where it meets a no-go cell (text or photo).
 	function scan() {
 		const slot = scans++ % HIST, ox = x / CS, oy = y / CS, max = RANGE / CS;
 		let hits = 0;
@@ -396,9 +355,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 			let ty = dy ? (dy > 0 ? j + 1 - oy : oy - j) * tdy : Infinity;
 			while (i >= 0 && i < NX && j >= 0 && j < NY) {
 				const k = j * NX + i;
-				if (stat[k] & 1) break;
-				if (truth[k]) {
-					observe(k, HIT);
+				if (stat[k] & 1) {
 					hit = true;
 					break;
 				}
@@ -422,16 +379,8 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		flush();
 	}
 
-	// Footprint check against known obstacles; the centre must also stay out of no-go cells.
-	function collides(px: number, py: number) {
-		if (px < 0 || px >= W || py < 0 || py >= H || stat[cellAt(px, py)] & 1) return true;
-		const i = (px / CS) | 0, j = (py / CS) | 0;
-		for (let m = 0; m < fdx.length; m++) {
-			const a = i + fdx[m], b = j + fdy[m];
-			if (a >= 0 && a < NX && b >= 0 && b < NY && state[b * NX + a] === 2) return true;
-		}
-		return false;
-	}
+	// The robot centre must stay on the field and out of no-go cells.
+	const collides = (px: number, py: number) => px < 0 || px >= W || py < 0 || py >= H || stat[cellAt(px, py)] & 1;
 
 	// One 10 ms step: sense at 10 Hz, replan on demand (≤ 10 Hz) or every 1 s, pure pursuit, unicycle kinematics.
 	function tick() {
@@ -584,49 +533,9 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		}
 	}
 
-	// Random hidden obstacles: 6–8 rectangles and 2–3 circles, clear of the robot and the
-	// no-go zones, each rejected if it cuts off more free space than its own footprint.
-	function generate(s: number) {
-		truth.fill(0);
-		inf.fill(0);
-		bfs(s, 0);
-		const base = qn;
-		let prev = qn, rects = 6 + ((Math.random() * 3) | 0), circles = 2 + ((Math.random() * 2) | 0);
-		for (let tries = 0; tries < 400 && rects + circles > 0; tries++) {
-			const round = circles > 0 && (!rects || Math.random() < 0.3);
-			const ox = Math.random() * W, oy = Math.random() * H;
-			const a = round ? 50 + Math.random() * 60 : 40 + Math.random() * 110, b = round ? a : 40 + Math.random() * 110;
-			if (Math.hypot(ox - x, oy - y) < Math.max(a, b) + R + 250) continue;
-			const i0 = Math.max(0, Math.floor((ox - a) / CS) - 1), i1 = Math.min(NX - 1, Math.floor((ox + a) / CS) + 1);
-			const j0 = Math.max(0, Math.floor((oy - b) / CS) - 1), j1 = Math.min(NY - 1, Math.floor((oy + b) / CS) + 1);
-			let n = 0, ok = true;
-			for (let j = j0; j <= j1 && ok; j++)
-				for (let i = i0; i <= i1; i++) {
-					const k = j * NX + i, dx = cx(k) - ox, dy = cy(k) - oy;
-					if (stat[k] & 1) {
-						ok = false;
-						break;
-					}
-					if ((round ? dx * dx + dy * dy <= a * a : Math.abs(dx) <= a && Math.abs(dy) <= b) && !truth[k]) cells[n++] = k;
-				}
-			if (!ok || !n) continue;
-			let lost = 0;
-			for (let m = 0; m < n; m++) (truth[cells[m]] = 1), (lost += spread(cells[m], 1, false));
-			bfs(s, 0);
-			if (qn < prev - lost - 0.03 * base) {
-				for (let m = 0; m < n; m++) (truth[cells[m]] = 0), spread(cells[m], -1, false);
-				continue;
-			}
-			prev = qn;
-			if (round) circles--;
-			else rects--;
-		}
-	}
-
 	function resetMap() {
 		L.fill(0);
 		state.fill(0);
-		inf.fill(0);
 		bad.fill(0);
 		dflag.fill(0);
 		hitN.fill(0);
@@ -640,7 +549,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 
 	// Reduced motion: map everything at once and show one planned path.
 	function preExplore() {
-		for (let k = 0; k < N; k++) if (!(stat[k] & 1)) observe(k, truth[k] ? 127 : -127);
+		for (let k = 0; k < N; k++) if (!(stat[k] & 1)) observe(k, -127);
 		flush();
 		bfs(cellAt(x, y), 0);
 		if (qn < 2) return;
@@ -701,12 +610,8 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		NY = H / CS;
 		if (NX * NY !== N) alloc(NX * NY);
 
-		// Robot radius: the drawn half-size in mm along the finer axis, raised so that radius
-		// + 50 mm inflation still covers the drawn body along the coarser axis.
+		// No-go pad and edge margin in px, from the drawn robot half-size and its label.
 		const half = 21 * size, pad = mobile ? 22 : 36, edge = half + 3;
-		R = Math.max(half / Math.max(sx, sy), half / Math.min(sx, sy) - 50);
-		[kdx, kdy] = kernel(R + 50);
-		[fdx, fdy] = kernel(R);
 
 		mappable = 0;
 		for (let k = 0; k < N; k++) {
@@ -723,7 +628,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 				for (let a = Math.max(0, i - 2); a <= Math.min(NX - 1, i + 2); a++) if (!(stat[b * NX + a] & 1)) stat[b * NX + a] |= 4;
 		}
 		// Start in the largest free region, at its cell nearest the bottom-right corner.
-		inf.fill(0);
 		bad.fill(0);
 		let seed = -1, largest = 0, start = -1, best = -Infinity;
 		for (let k = 0; k < N; k++) {
@@ -748,8 +652,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 			y = cy(start);
 			th = Math.PI;
 			v = om = 0;
-			generate(start);
-			resetMap();
 			if (still) preExplore();
 		}
 		draw();

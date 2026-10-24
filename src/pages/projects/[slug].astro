@@ -23,7 +23,7 @@ const { Content } = await render(project);
 const facts = [
 	{ label: 'Year', value: String(data.year) },
 	data.role ? { label: 'Role', value: data.role } : null,
-	data.result ? { label: 'Result', value: data.result } : null,
+	data.result ? { label: 'Result', value: data.result_detail ?? data.result } : null,
 	{ label: 'Stack', value: data.tags.join(' / '), mono: true },
 ].filter((fact) => fact !== null);
 

@@ -102,9 +102,9 @@ projects:
   heading: "Selected work"
   layout: "list"                  # full-width rows separated by rules
   items:
-    - title: "Autonomous Cable Insertion"
+    - title: "Industrial AI Robotic Assembly"
       slug: "cable-insertion"
-      context: "Intrinsic AI for Industry Challenge · Bachelor's thesis"
+      context: "Vision-guided cable insertion · Intrinsic AI for Industry Challenge"
       year: 2026
       result: "4th of 160+ teams, qualifying round"
       summary: "Team lead. Full autonomy pipeline for inserting SFP and SC connectors: YOLO segmentation across three wrist cameras, SVD/DLT triangulation, PCA orientation estimation and impedance-controlled insertion on a UR5e. Transferred to a real xArm7 cell. Paper in preparation."
@@ -113,9 +113,9 @@ projects:
       repo_url: ""
       paper_url: ""
       featured: true
-    - title: "Eurobot Competition Robots"
+    - title: "Autonomous Mobile Robots"
       slug: "eurobot"
-      context: "Eurobot · 3 seasons"
+      context: "Navigation, control & strategy · Eurobot competition"
       year: 2026
       result: ""                                  # TODO: placement if relevant
       summary: "Software lead for two mirrored differential-drive robots. STM32H7 low-level control in C — 1 kHz PID and odometry, trapezoidal velocity profiles, concurrent FSMs — with a Raspberry Pi 5 strategy and ArUco vision layer over UART. Previous season: trained the game-element recognition model for dynamic strategy."
@@ -123,9 +123,9 @@ projects:
       tags: ["STM32H7", "C", "Raspberry Pi", "OpenCV", "FSM"]
       repo_url: ""
       featured: true
-    - title: "Edge-AI Thermostat"
+    - title: "Edge AI on Microcontrollers"
       slug: "edge-thermostat"
-      context: "RT-RK internship"
+      context: "TinyML on ESP32 · RT-RK internship"
       year: 2025
       result: ""
       summary: "Trained and compared regression and neural network models predicting room setpoint temperature from user input data; deployed the best model on an ESP32 with TensorFlow Lite."
@@ -229,7 +229,7 @@ TODO: one line on what you want to work on next, one human line.
 
 ## Projects
 
-### Autonomous Cable Insertion — case study
+### Industrial AI Robotic Assembly — case study
 
 **Problem:** TODO — why connector insertion is hard (tolerances, occlusion, contact).
 

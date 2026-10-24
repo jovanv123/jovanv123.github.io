@@ -14,7 +14,9 @@ const projects = defineCollection({
 			context: z.string(),
 			role: z.string().optional(),
 			year: z.number().int(),
+			// Short result for the card footer; result_detail (if set) replaces it on the project page.
 			result: z.string().optional(),
+			result_detail: z.string().optional(),
 			summary: z.string(),
 			cover: figure.omit({ caption: true }).optional(),
 			// Video loop in public/, e.g. "media/<slug>.mp4": the card's hover preview, and the

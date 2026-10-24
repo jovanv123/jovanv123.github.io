@@ -78,9 +78,8 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 								<h3 class="text-xl tracking-tight group-hover:text-accent-hover group-focus-visible:text-accent">{data.title}</h3>
 								<p class="font-mono text-xs text-muted">{data.context}</p>
 								<p class="mt-auto pt-4 font-mono text-xs text-accent-hover opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">View case study →</p>
-								<p class="flex border-t border-border pt-3 font-mono text-xs whitespace-nowrap" title={data.result}>
-									{data.result && <span class="min-w-0 truncate">{data.result}</span>}
-									<span class="shrink-0">{data.result && <span class="text-muted">&nbsp;·&nbsp;</span>}{data.year}</span>
+								<p class="border-t border-border pt-3 font-mono text-xs">
+									{data.result && <>{data.result} <span class="text-muted">·</span> </>}{data.year}
 								</p>
 							</div>
 						</a>

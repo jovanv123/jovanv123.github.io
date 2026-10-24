@@ -6,7 +6,7 @@ Astro, Tailwind, MDX, astro-icon (`@iconify-json/simple-icons` for brands, `@ico
 ## Content
 - `portfolio.md` (repo root) is the original content source. Its front-matter holds all config and content.
 - Target structure:
-  - `src/data/site.yaml`: site, theme, colors, nav, profile (greeting + name + tagline + status make the hero; photo is a file in `src/assets/`), focus (kept, not rendered), featured, projects, experience, education, skills (groups: name, `icon`, items as label or `{ label, icon? }`; icons are iconify names like `simple-icons:ros`, `tabler:cpu`), socials, footer
+  - `src/data/site.yaml`: site, theme, colors, nav, profile (greeting + name + tagline + status make the hero; photo is a file in `src/assets/`), focus (kept, not rendered), featured (aria label only), projects, experience, education, skills (groups: name, `icon`, items as label or `{ label, icon? }`; icons are iconify names like `simple-icons:ros`, `tabler:cpu`), socials, footer
   - `src/content/projects/<slug>/index.mdx`: one folder per project; frontmatter from `projects.items`, body from the case-study sections
   - Project images (cover, gallery) are colocated in the project folder and referenced relatively (`./cover.jpg`). They go through the `image()` schema helper and render with `<Image>` from `astro:assets`, never `<img>` or `public/`.
   - Videos stay in `public/media/` with a same-name `.jpg` poster next to each. `media` is the hero loop (`media/<name>.mp4`); `videos` holds extra loops shown in the case study with `<VideoCompare items={frontmatter.videos} />`.
@@ -14,9 +14,9 @@ Astro, Tailwind, MDX, astro-icon (`@iconify-json/simple-icons` for brands, `@ico
 
 ## Pages
 - Home (single page), each section labeled in mono (`01 — Featured work`) over a hairline, hairlines between sections:
-  - Hero (`#about`, white, `theme.hero_height` 90vh): left: "Hey, I'm <name>." with the name in accent, tagline, mono status line with accent dot, text links "View work →" and "CV ↓". Right: square photo (`theme.photo_size` 360px) from `src/assets/<profile.photo>` via `<Image>`, 1px hairline frame, mono corner labels (FIG. 0 / location). Mobile: photo first. Missing photo → framed placeholder.
-  - Hero background: `RobotArm` canvas: planar 3-link line-art arm (`line` color), accent end-effector, base bottom-right, dotted workspace circle, live mono joint readout. CCD IK follows the mouse with damping and joint limits; idle/off-hero/touch traces a figure-8. rAF paused off-screen (IntersectionObserver), DPR-aware, static pose under reduced motion. Plain TS, no libraries, low contrast, never over text legibility.
-  - 01 Projects (`#work`): full-width `surface` band with the first `featured.count` (3) projects as cards in a row (stacked on mobile): 16:9 poster that plays its loop on desktop hover, title, mono context, mono result. White fill, hairline border, accent border on hover, whole card is the link. Then on white (`#projects`) the full hairline list rows.
+  - Hero (`#about`, white, content height: `pt-24 pb-20` desktop, `pt-12 pb-10` mobile; headline `text-hero` = clamp(2.25rem, 4.5vw, 3.75rem), tagline 1.25rem, tight gaps): left: "Hey, I'm <name>." with the name in accent, tagline, mono status line with accent dot, text links "View work →" and "CV ↓". Right: square photo (`theme.photo_size` 280px, vertically centred with the text) from `src/assets/<profile.photo>` via `<Image>`, 1px hairline frame, mono corner labels (FIG. 0 / location). Mobile: photo first. Missing photo → framed placeholder.
+  - Hero background: `RobotArm` canvas: planar 3-link line-art arm (`line` color), accent end-effector, base bottom-right outside the photo, dotted workspace circle, live mono joint readout (hidden on mobile). Link lengths and workspace scale with the hero height. Links never enter the `[data-arm-avoid]` boxes (text block, photo figure) or drop below the base line: targets are pushed out of those boxes and CCD only accepts collision-free joint steps; canvas clipped to the hero. CCD IK follows the mouse with damping and joint limits; idle/off-hero/touch traces a figure-8. rAF paused off-screen (IntersectionObserver), DPR-aware, static pose under reduced motion. Plain TS, no libraries, low contrast, never over text legibility.
+  - 01 Projects (`#work`): full-width `surface` band with every project as a card, featured first then year descending, 3 per row (stacked on mobile): 16:9 poster that plays its loop on desktop hover, title, mono context, mono result. White fill, hairline border, accent border on hover, whole card is the link. No list rows.
   - 02 Experience: full-width rows, date | role + company | points.
   - 03 Technical skills: cards 4/2/1 per row (desktop/tablet/mobile): group icon on top, group name, items as small icon + label in muted text. Icons monochrome near-black, accent on card hover with the border. Hairline border, no radius, no shadow.
   - 04 Education (`EducationTimeline`): vertical line on the left with a square node per entry, most recent on top. Entry: mono date range in accent, degree (semibold), school, muted note. The faint dashed hairline fills with solid accent as the section scrolls (CSS `animation-timeline` view timelines; JS fallback sets `--timeline-progress` / `.is-on` in Firefox/Safari). A node fills when the line reaches it; the current entry (`end: present`) is always filled with a subtle pulse ring. Reduced motion: fully drawn, no pulse.
@@ -32,11 +32,11 @@ Astro, Tailwind, MDX, astro-icon (`@iconify-json/simple-icons` for brands, `@ico
 - Tokens come from the `theme`, `colors` and `typography` blocks in site.yaml and are mapped into the Tailwind config. Never use arbitrary inline values.
 - Fonts: Geist and Geist Mono. Use mono for tags, dates, metadata and the status line.
 - 1px hairline rules separate sections and list items. Never use boxes.
-- Use the single accent color (#FF5F1F) only for hover, focus, the status dot, the hero name, the arm end-effector and the education timeline (dates, line, nodes). On black (nav, footer) hover is an accent underline on white text.
-- Light-gray `surface` (#F4F4F5) is for full-width bands (featured work). `line` (#D4D4D8) is only for the hero arm.
-- Projects render as full-width list rows, each one link: year | title + context | result | tags. Hover/focus turns the title accent and slides in a →. Rows with media end with a 240px 16:9 poster thumbnail (`preload="none"`) that plays on desktop hover and resets on leave; static poster below the text on mobile. Thumbnails stay posters under `prefers-reduced-motion`.
+- Use the single accent color, royal blue (#4169E1, `accent-hover` #2F55C9 for hover/active), only for hover, focus, the status dot, the hero name, the arm end-effector and the education timeline (dates, line, nodes). On black (nav, footer) hover is an accent underline on white text.
+- Light-gray `surface` (#F4F4F5) is for full-width bands (project cards). `line` (#D4D4D8) is only for the hero arm.
+- Project card posters use `preload="none"`, play on desktop hover and reset on leave; they stay posters under `prefers-reduced-motion`.
 - Banned:
-  - card grids other than the featured project cards and the skill cards; box-shadow, gradients, glassmorphism
+  - card grids other than the project cards and the skill cards; box-shadow, gradients, glassmorphism
   - any border-radius > 0
   - emoji, colored or multicolor icons, bordered skill chips, progress bars (icons only as monochrome glyphs in the skill cards)
   - centered hero, circular photo, button CTAs (text links only)

@@ -25,8 +25,7 @@ theme:
   max_width: "1100px"
   column_width: "800px"           # project page column: header, media, figures
   text_width: "680px"             # project page body text
-  hero_height: "90vh"             # home hero min-height
-  photo_size: "360px"             # hero photo, square
+  photo_size: "280px"             # hero photo, square
   border_radius: "0"              # sharp everywhere
   borders: "1px hairline"         # rules between sections/items, no boxes
   shadows: false
@@ -39,7 +38,8 @@ colors:
   surface:       "#F4F4F5"        # footer band — flat fill, no cards
   text:          "#0A0A0A"
   muted:         "#71717A"
-  accent:        "#FF5F1F"        # ONE accent: hover, focus, status dot, hero name, arm end-effector
+  accent:        "#4169E1"        # ONE accent: focus, status dot, hero name, arm end-effector, timeline
+  accent-hover:  "#2F55C9"        # accent on hover/active
   border:        "#E4E4E7"
   line:          "#D4D4D8"        # hero robot arm line art
   inverse:       "#0A0A0A"        # black nav bar
@@ -104,12 +104,11 @@ focus:                            # area / description / topics — not rendered
       topics: ["STM32", "C", "PID", "TFLite Micro"]
 
 featured:
-  heading: "Featured"             # poster cards at the top of 01 — Projects
-  count: 3
+  heading: "Featured"             # aria label of the project cards in 01 — Projects
 
 projects:
   heading: "Projects"
-  layout: "list"                  # full-width rows separated by rules
+  layout: "cards"                 # every project as a poster card, featured first
 
 experience:
   heading: "Experience"

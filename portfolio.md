@@ -36,7 +36,7 @@ colors:
     surface:    "#0A0A0A"         # same as background — no cards
     text:       "#EDEDED"
     muted:      "#8A8A8A"
-    accent:     "#FF5F1F"         # ONE accent: links on hover, status dot
+    accent:     "#4169E1"         # ONE accent: links on hover, status dot
     border:     "#262626"
   light:
     background: "#FAFAFA"

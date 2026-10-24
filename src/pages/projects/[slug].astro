@@ -38,7 +38,7 @@ const sizes = '(min-width: 800px) 800px, 100vw';
 <BaseLayout title={data.title} description={data.summary}>
 	<article class="project pt-16 md:pt-24">
 		<header>
-			<p class="meta"><a href="/#projects" class="no-underline">← Work</a></p>
+			<p class="meta"><a href="/#work" class="no-underline">← Work</a></p>
 			<h1 class="mt-10 text-4xl leading-none tracking-tighter sm:text-5xl md:text-6xl">{data.title}</h1>
 			<p class="mt-6 font-mono text-sm text-muted">{data.context}</p>
 			<dl class="mt-12 grid grid-cols-2 gap-x-8 gap-y-6 border-t border-border pt-6 md:grid-cols-4">
@@ -95,7 +95,7 @@ const sizes = '(min-width: 800px) 800px, 100vw';
 
 		<nav aria-label="Next project" class="mt-16 border-t border-border py-16 md:mt-20 md:py-20">
 			<a href={`/projects/${next.data.slug}`} class="group no-underline">
-				<span class="meta block group-hover:text-accent group-focus-visible:text-accent">Next project →</span>
+				<span class="meta block group-hover:text-accent-hover group-focus-visible:text-accent">Next project →</span>
 				<span class="mt-3 block text-2xl tracking-tight md:text-3xl">{next.data.title}</span>
 			</a>
 		</nav>

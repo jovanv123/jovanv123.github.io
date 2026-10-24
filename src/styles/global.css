@@ -21,6 +21,7 @@
 	--color-text: var(--site-color-text);
 	--color-muted: var(--site-color-muted);
 	--color-accent: var(--site-color-accent);
+	--color-accent-hover: var(--site-color-accent-hover);
 	--color-border: var(--site-color-border);
 	--color-line: var(--site-color-line);
 	--color-inverse: var(--site-color-inverse);
@@ -31,6 +32,10 @@
 	--font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-geist-mono), ui-monospace, monospace;
 	--font-weight-heading: var(--site-heading-weight);
+
+	/* Hero headline: text-hero. */
+	--text-hero: clamp(2.25rem, 4.5vw, 3.75rem);
+	--text-hero--line-height: 1.1;
 
 	--container-content: var(--site-max-width);
 	--container-column: var(--site-column-width);
@@ -60,17 +65,12 @@
 
 	/* Text links: hairline underline, accent only on hover. */
 	a {
-		@apply underline decoration-border decoration-1 underline-offset-4 hover:text-accent hover:decoration-current;
+		@apply underline decoration-border decoration-1 underline-offset-4 hover:text-accent-hover hover:decoration-current active:text-accent-hover;
 	}
 
 	:focus-visible {
 		@apply outline-1 outline-offset-4 outline-accent;
 	}
-}
-
-/* Home hero: tall first screen, height from theme.hero_height. */
-@utility min-h-hero {
-	min-height: var(--site-hero-height);
 }
 
 /* Mono metadata label: tags, dates, section labels, status line. */

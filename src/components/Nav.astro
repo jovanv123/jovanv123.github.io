@@ -18,7 +18,7 @@ const { nav } = Astro.props.site;
 		<ul class="flex flex-wrap gap-x-6 gap-y-2">
 			{nav.links.map((link) => (
 				<li>
-					<a href={resolveHref(link.href)} class="meta text-inverse-text no-underline decoration-accent hover:text-inverse-text hover:underline">{link.label}</a>
+					<a href={resolveHref(link.href)} class="meta text-inverse-text no-underline decoration-accent-hover hover:text-inverse-text hover:underline">{link.label}</a>
 				</li>
 			))}
 		</ul>

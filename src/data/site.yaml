@@ -132,13 +132,12 @@ experience:
       company_url: ""
       start: "2024-08"
       end: "2024-10"
-      points:
-        - ""
+      points: []
 
 education:
   heading: "Education"
   items:
-    - degree: "MSc Mechatronics, Robotics and Biomedical Engineering"
+    - degree: "MSc Mechatronics, Robotics and Biomechanical Engineering"
       school: "Technical University of Munich"
       start: "2026"
       end: "present"
@@ -196,7 +195,7 @@ socials:
 footer:                           # black, multi-column, matches the nav
   columns:
     - { heading: "About",    text: "Robotics engineer. Munich, DE." }
-    - { heading: "Contact",  text: "jovavasic097@gmail.com" }       # email + CV, filled from profile
+    - { heading: "Contact",  text: "jovanvasic097@gmail.com" }       # email + CV, filled from profile
     - { heading: "Elsewhere", text: "" }      # filled from socials
   text: "© 2026 Jovan Vasić"
   show_back_to_top: false

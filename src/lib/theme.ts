@@ -19,6 +19,7 @@ export function themeCss({ theme, colors, typography }: Site) {
 		`--site-max-width: ${theme.max_width};`,
 		`--site-column-width: ${theme.column_width};`,
 		`--site-text-width: ${theme.text_width};`,
+		`--site-narrow-width: ${theme.narrow_width};`,
 		`--site-photo-size: ${theme.photo_size};`,
 		`--site-base-size: ${typography.base_size};`,
 		`--site-line-height: ${typography.line_height};`,

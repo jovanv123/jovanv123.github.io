@@ -25,6 +25,7 @@ theme:
   max_width: "1100px"
   column_width: "800px"           # project page column: header, media, figures
   text_width: "680px"             # project page body text
+  narrow_width: "720px"           # home sections that read as one column (education)
   photo_size: "280px"             # hero photo, square
   border_radius: "0"              # sharp everywhere
   borders: "1px hairline"         # rules between sections/items, no boxes
@@ -61,10 +62,11 @@ nav:
   logo_text: "Jovan Vasić"
   sticky: true
   links:
-    - { label: "Work",    href: "#work" }
-    - { label: "About",   href: "#about" }
-    - { label: "CV",      href: "assets/cv.pdf" }
-    - { label: "Contact", href: "#contact" }
+    - { label: "Projects",   href: "#projects" }
+    - { label: "Experience", href: "#experience" }
+    - { label: "Education",  href: "#education" }
+    - { label: "Contact",    href: "#contact" }
+    - { label: "CV",         href: "assets/cv.pdf" }
 
 # ------------------------------------------------------------
 #  CONTENT
@@ -75,7 +77,9 @@ profile:
   greeting: "Hey, I’m"            # hero: "<greeting> <name>." with the name in accent
   tagline: "Mechatronics engineer building robots that see and manipulate. MSc MRBE @ TUM."
   location: "Munich, DE"
-  photo: "me-color.jpg"           # in src/assets/, square crop; a framed placeholder shows until it exists
+  photo:                          # in src/assets/, square crops; a framed placeholder shows until they exist
+    bw: "me-bw.jpg"               # shown by default
+    color: "me-color.jpg"         # crossfades in on hover
   email: ""                       # TODO
   cv: "assets/cv.pdf"
   status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot
@@ -153,32 +157,28 @@ education:
 
 skills:
   heading: "Technical skills"
-  display: "cards"                # 4/2/1 grid of hairline cards: icon, name, items
-  # icon: iconify name, "simple-icons:<brand>" or "tabler:<generic>".
-  # Items are a label or { label, icon }; item icons render as small icon + label.
+  display: "cards"                # 4/2/1 grid of hairline cards: name, then one icon + label row per item
+  # Item icons are iconify names: "simple-icons:<brand>" logos, or a "tabler:<generic>"
+  # glyph where the tool has no brand logo.
   groups:
     - name: "Robotics"
-      icon: "tabler:robot"
       items:
         - { label: "ROS 2", icon: "simple-icons:ros" }
-        - "Gazebo"
-        - "Intrinsic Flowstate"
-        - "UR / xArm"
+        - { label: "Gazebo", icon: "tabler:world" }
+        - { label: "Intrinsic Flowstate", icon: "tabler:settings-automation" }
+        - { label: "UR / xArm", icon: "tabler:robot" }
     - name: "Languages"           # TODO: verify
-      icon: "tabler:code"
       items:
         - { label: "Python", icon: "simple-icons:python" }
         - { label: "C", icon: "simple-icons:c" }
         - { label: "C++", icon: "simple-icons:cplusplus" }
     - name: "Perception / ML"     # TODO: verify
-      icon: "tabler:camera"
       items:
-        - "YOLO"
+        - { label: "YOLO", icon: "simple-icons:yolo" }
         - { label: "OpenCV", icon: "simple-icons:opencv" }
         - { label: "PyTorch", icon: "simple-icons:pytorch" }
         - { label: "TensorFlow Lite", icon: "simple-icons:tensorflow" }
     - name: "Embedded / Infra"
-      icon: "tabler:cpu"
       items:
         - { label: "STM32", icon: "simple-icons:stmicroelectronics" }
         - { label: "Raspberry Pi", icon: "simple-icons:raspberrypi" }
@@ -189,7 +189,7 @@ skills:
 
 contact:
   heading: "Contact"
-  message: ""
+  message: "Let’s build robots."  # large closing line above the email
   show_form: false                # email link is enough
   show_email: true
 

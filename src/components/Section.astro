@@ -12,7 +12,7 @@ interface Props {
 const { id, index, heading, ruled = true } = Astro.props;
 ---
 
-<section id={id} aria-labelledby={`${id}-heading`} class:list={['scroll-mt-24 py-20 md:py-24', ruled && 'border-t border-border']}>
+<section id={id} aria-labelledby={`${id}-heading`} class:list={['scroll-mt-24 py-8 md:py-14', ruled && 'border-t border-border']}>
 	<h2 id={`${id}-heading`} class="meta border-b border-border pb-4 text-text">
 		<span class="text-muted">{index} —</span> {heading}
 	</h2>

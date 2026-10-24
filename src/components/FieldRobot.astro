@@ -1,9 +1,10 @@
 ---
 // Hero background: a mini navigation stack on a 3000 × 2000 mm field. The obstacles are
 // the [data-nogo] elements (hero text, photo, readout, reset link): a 2D lidar sees their
-// edges, a log-odds grid maps the free space around them (they are never mapped or driven
-// through), A* plans (unknown space optimistic, line-of-sight smoothed) and pure pursuit
-// follows. Idle it explores the nearest frontier; a click sets the goal. Reduced motion: a pre-explored static map with
+// edges, a log-odds grid maps the free space around them (they are never mapped, painted or
+// driven through), A* plans (unknown space optimistic, line-of-sight smoothed) and pure
+// pursuit follows. Known cells decay back to unknown over ~60 s, so exploring never ends.
+// Only rays, hits, path, goal and robot are drawn; the map itself stays invisible. Reduced motion: a pre-explored static map with
 // one planned path. Hidden and not run under 768px (md), where the hero is just text and photo.
 // Readout lines are padded to a fixed width (monospace) so the box never resizes;
 // the placeholders give it its final size before the script runs.
@@ -30,24 +31,22 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	const spans = [...out.children] as HTMLElement[];
 	const nogo = [...hero.querySelectorAll<HTMLElement>('[data-nogo]')];
 	const ctx = canvas.getContext('2d')!;
-	const off = document.createElement('canvas'); // costmap, 1 px per cell
-	const offCtx = off.getContext('2d')!;
 	const layer = document.createElement('canvas'); // static grid lines and ticks
 	const layerCtx = layer.getContext('2d')!;
 	const css = getComputedStyle(document.documentElement);
 	const color = (name: string) => css.getPropertyValue(`--site-color-${name}`).trim();
-	const [grid, rayColor, ink, accent, paper, muted, surface] = ['border', 'line', 'text', 'accent', 'background', 'muted', 'surface'].map(color);
-	const free = [1, 3, 5].map((i) => parseInt(surface.slice(i, i + 2), 16)); // free cells in `surface`
+	const [grid, ink, accent, paper, muted] = ['border', 'text', 'accent', 'background', 'muted'].map(color);
 	const font = `10px ${getComputedStyle(out).fontFamily}`;
 	const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	const W = 3000, H = 2000, RANGE = 1200, LOOK = 150; // mm
 	const V_MAX = 400, A_MAX = 600, W_MAX = 2, DT = 0.01; // mm/s, mm/s², rad/s, 100 Hz
 	const MISS = -12, FREE = -20; // log-odds step per pass-through and free threshold, clamped to -100
+	const DECAY = 0.75; // s per +1 log-odds: a saturated cell (-100) is unknown again after ~60 s
 	const UNKNOWN = 2; // A* cost multiplier for unknown cells
 	const HIST = 6, MAXW = 256; // scans kept for the 0.5 s hit fade, max waypoints
 	const MIN_LEG = 600; // mm: frontiers closer than this are only used when nothing farther is left
-	const PAD = 44, BUFFER = 16; // px: no-go reach beyond each element (robot body and label + gap), planning buffer
+	const SCALE = 1.5, PAD = 52, BUFFER = 12, EDGE = 48; // robot size; px: no-go beyond each element (body + label + gap), planning buffer, hero inset
 	const CORNER = Math.PI / 6, V_CORNER = 100; // bends sharper than 30° are driven to, at ≤ 100 mm/s
 	// ArUco DICT_4X4_50 id 7 inner bits, 1 = white (checked with cv2.aruco.detectMarkers).
 	const BITS = ['0110', '0010', '0111', '0001'];
@@ -59,13 +58,12 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	let w = 0, h = 0, sx = 1, sy = 1, gx = 100, gy = 100, layout = '', parked = true;
 	const CS = 25, NX = W / CS, NY = H / CS, RAYS = 72; // 25 mm cells, 72 rays (5°)
 	let N = 0;
-	let stat = new Uint8Array(0), state = stat, bad = stat, dflag = stat; // state: 0 unknown, 1 free
+	let stat = new Uint8Array(0), state = stat, bad = stat; // state: 0 unknown, 1 free
 	let L = new Int8Array(0); // log-odds
 	let g = new Float32Array(0), fv = g;
-	let came = new Int32Array(0), heap = came, hpos = came, queue = came, cells = came, dlist = came;
+	let came = new Int32Array(0), heap = came, hpos = came, queue = came, cells = came;
 	let seen = new Uint32Array(0), closed = seen;
-	let run = 0, hn = 0, dn = 0, qn = 0, known = 0, mappable = 0;
-	let img = new ImageData(1, 1);
+	let run = 0, hn = 0, qn = 0, known = 0, mappable = 0, decayed = 0;
 
 	// Robot, path and sensor state.
 	let x = 0, y = 0, th = Math.PI, v = 0, om = 0;
@@ -97,48 +95,28 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 
 	function alloc(n: number) {
 		N = n;
-		[stat, state, bad, dflag] = [0, 0, 0, 0].map(() => new Uint8Array(n));
+		[stat, state, bad] = [0, 0, 0].map(() => new Uint8Array(n));
 		L = new Int8Array(n);
 		[g, fv] = [new Float32Array(n), new Float32Array(n)];
-		[came, heap, hpos, queue, cells, dlist] = [0, 0, 0, 0, 0, 0].map(() => new Int32Array(n));
+		[came, heap, hpos, queue, cells] = [0, 0, 0, 0, 0].map(() => new Int32Array(n));
 		[seen, closed] = [new Uint32Array(n), new Uint32Array(n)];
 		run = 0;
 	}
 
-	function dirty(k: number) {
-		if (!dflag[k]) (dflag[k] = 1), (dlist[dn++] = k);
-	}
-
-	// Log-odds update of one cell a ray passed through; marks its pixel dirty once it turns free.
+	// Log-odds update of one cell a ray passed through.
 	function observe(k: number, d: number) {
 		const l = L[k] + d;
 		L[k] = l < -100 ? -100 : l;
-		if (state[k] || L[k] >= FREE) return;
-		state[k] = 1;
-		known++;
-		dirty(k);
+		if (!state[k] && L[k] < FREE) (state[k] = 1), known++;
 	}
 
-	// Write changed cells into the costmap image and upload only their bounding box.
-	function flush() {
-		if (!dn) return;
-		const d = img.data;
-		let x0 = NX, y0 = NY, x1 = 0, y1 = 0;
-		for (let n = 0; n < dn; n++) {
-			const k = dlist[n], i = k % NX, r = NY - 1 - ((k / NX) | 0), p = (r * NX + i) * 4;
-			dflag[k] = 0;
-			const on = state[k] === 1 && !(stat[k] & 1);
-			d[p] = free[0];
-			d[p + 1] = free[1];
-			d[p + 2] = free[2];
-			d[p + 3] = on ? 255 : 0;
-			if (i < x0) x0 = i;
-			if (i > x1) x1 = i;
-			if (r < y0) y0 = r;
-			if (r > y1) y1 = r;
+	// Forget slowly: every DECAY s all known cells drift +1 towards unknown.
+	function decay() {
+		for (let k = 0; k < N; k++) {
+			if (!L[k]) continue;
+			L[k]++;
+			if (state[k] && L[k] >= FREE) (state[k] = 0), known--;
 		}
-		dn = 0;
-		offCtx.putImageData(img, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
 	}
 
 	function frontierCell(k: number) {
@@ -392,7 +370,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		rays = RAYS;
 		scanX = x;
 		scanY = y;
-		flush();
 	}
 
 	// The robot centre must stay on the field and out of no-go cells.
@@ -402,6 +379,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	function tick() {
 		simT += DT;
 		if (ticks++ % 10 === 0) scan();
+		if (simT - decayed >= DECAY) (decayed = simT), decay();
 		if (!hasGoal && simT - idleT > 0.6 && simT - lastExplore > 0.25) explore();
 		if (hasGoal && ((needReplan && simT - lastPlan >= 0.1) || simT - lastPlan >= 1)) plan();
 		let vt = 0, wt = 0;
@@ -466,6 +444,7 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		ctx.save();
 		ctx.translate(px, py);
 		ctx.rotate(a);
+		ctx.scale(SCALE, SCALE);
 		ctx.fillStyle = ink;
 		ctx.fillRect(-10, -21, 20, 3);
 		ctx.fillRect(-10, 18, 20, 3);
@@ -487,8 +466,8 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		ctx.restore();
 
 		// Camera detection: axis-aligned box around the rotated marker.
-		const s = Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)), half = 10.5 * s + 4;
-		const bx = px - 1.5 * Math.cos(a), by = py - 1.5 * Math.sin(a);
+		const s = Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)), half = (10.5 * s + 4) * SCALE;
+		const bx = px - 1.5 * SCALE * Math.cos(a), by = py - 1.5 * SCALE * Math.sin(a);
 		ctx.strokeStyle = ctx.fillStyle = accent;
 		ctx.setLineDash(DASH);
 		ctx.strokeRect(bx - half, by - half, 2 * half, 2 * half);
@@ -499,15 +478,13 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 	function draw() {
 		ctx.clearRect(0, 0, w, h);
 		if (parked) return;
-		ctx.imageSmoothingEnabled = false;
-		ctx.drawImage(off, 0, 0, w, h);
 		ctx.drawImage(layer, 0, 0, w, h);
 		ctx.lineWidth = 1;
 
 		if (rays) {
 			const ox = scanX * sx, oy = h - scanY * sy;
-			ctx.globalAlpha = 0.6;
-			ctx.strokeStyle = rayColor;
+			ctx.globalAlpha = 0.06;
+			ctx.strokeStyle = ink;
 			ctx.beginPath();
 			for (let m = 0; m < rays; m++) ctx.moveTo(ox, oy), ctx.lineTo(rayX[m] * sx, h - rayY[m] * sy);
 			ctx.stroke();
@@ -560,20 +537,16 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		L.fill(0);
 		state.fill(0);
 		bad.fill(0);
-		dflag.fill(0);
 		hitN.fill(0);
 		clearPath();
-		dn = known = rays = remain = 0;
+		known = rays = remain = 0;
 		hasGoal = exploring = noPath = false;
-		idleT = simT;
-		img.data.fill(0);
-		offCtx.putImageData(img, 0, 0);
+		idleT = decayed = simT;
 	}
 
 	// Reduced motion: map everything at once and show one planned path.
 	function preExplore() {
 		for (let k = 0; k < N; k++) if (!(stat[k] & 1)) observe(k, -127);
-		flush();
 		bfs(cellAt(x, y), 0);
 		if (qn < 2) return;
 		setGoal(queue[qn - 1], false);
@@ -590,7 +563,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		for (let x = gx; x < W; x += gx) layerCtx.moveTo(Math.round(x * sx) + 0.5, 0), layerCtx.lineTo(Math.round(x * sx) + 0.5, h);
 		for (let y = gy; y < H; y += gy) layerCtx.moveTo(0, Math.round(h - y * sy) + 0.5), layerCtx.lineTo(w, Math.round(h - y * sy) + 0.5);
 		layerCtx.stroke();
-		for (const r of rects) layerCtx.clearRect(r.x - 8, r.y - 8, r.width + 16, r.height + 16);
 		// Axis ticks in mm, every other line, skipped where they would touch content.
 		const near = (px: number, py: number) => rects.some((r) => px > r.left - 4 && px < r.right + 4 && py > r.top - 4 && py < r.bottom + 4);
 		layerCtx.font = font;
@@ -631,12 +603,11 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 		gy = step(sy);
 		if (!N) alloc(NX * NY);
 
-		const edge = 24; // px: keeps the drawn robot inside the hero
 
 		mappable = 0;
 		for (let k = 0; k < N; k++) {
 			const X = cx(k) * sx, Y = h - cy(k) * sy;
-			let s = X < edge || X > w - edge || Y < edge || Y > h - edge ? 2 : 0;
+			let s = X < EDGE || X > w - EDGE || Y < EDGE || Y > h - EDGE ? 2 : 0;
 			for (const r of rects) {
 				const d = Math.hypot(Math.max(r.left - X, 0, X - r.right), Math.max(r.top - Y, 0, Y - r.bottom)); // px to the element
 				if (d < PAD) s |= 1;
@@ -660,9 +631,6 @@ const readout = ['x', 'y', 'θ', 'v', 'ω', 'goal —', 'path —', 'explored 0%
 			if (score > best) (best = score), (start = k);
 		}
 		parked = start < 0;
-		off.width = NX;
-		off.height = NY;
-		img = offCtx.createImageData(NX, NY);
 		resetMap();
 		paintLayer(rects, dpr);
 		if (!parked) {

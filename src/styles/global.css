@@ -43,6 +43,7 @@
 	--container-content: var(--site-max-width);
 	--container-column: var(--site-column-width);
 	--container-text: var(--site-text-width);
+	--container-narrow: var(--site-narrow-width);
 	--container-photo: var(--site-photo-size);
 }
 

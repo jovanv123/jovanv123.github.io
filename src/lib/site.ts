@@ -35,6 +35,7 @@ export const siteSchema = z.object({
 		max_width: z.string(),
 		column_width: z.string(),
 		text_width: z.string(),
+		narrow_width: z.string(),
 		photo_size: z.string(),
 		border_radius: z.string(),
 		borders: z.string(),
@@ -63,7 +64,7 @@ export const siteSchema = z.object({
 		greeting: z.string(),
 		tagline: z.string(),
 		location: z.string(),
-		photo: z.string(),
+		photo: z.object({ bw: z.string(), color: z.string() }),
 		email: z.string(),
 		cv: z.string(),
 		status: z.string(),
@@ -106,9 +107,8 @@ export const siteSchema = z.object({
 		groups: z.array(
 			z.object({
 				name: z.string(),
-				/** Iconify name, e.g. "simple-icons:ros" or "tabler:cpu". */
-				icon: z.string(),
-				items: z.array(z.union([z.string(), z.object({ label: z.string(), icon: z.string().optional() })])),
+				/** Icons are iconify names, e.g. "simple-icons:ros" or "tabler:world". */
+				items: z.array(z.object({ label: z.string(), icon: z.string() })),
 			}),
 		),
 	}),

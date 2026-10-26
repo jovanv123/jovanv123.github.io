@@ -249,19 +249,38 @@
 }
 
 /*
- * Project videos are never cropped. A video stage is a fixed-height size
- * container (square below md) on a surface letterbox; the video scales down to
- * fit it whole, so anything pinned to the video (the carousel's speed chip)
- * sits in its own corner.
+ * Project videos are never cropped. A video stage is a hairline frame filled
+ * with a blurred, darkened copy of the active poster (--poster, set by the
+ * carousel), so leftover space never reads as empty bars. The slide sizes to
+ * the video, so the speed chip sits in the video's own corner.
  *
- * Carousel: below md the buttons move down beside the counter. Captions are
- * stacked in one grid cell: the tallest sets the height and switching slides
- * crossfades.
+ * Landscape (default): a fixed-height size container (square below md); the
+ * video scales down to fit it whole. Buttons flank it from md up and sit
+ * beside the counter below it; .carousel-panel and .carousel-controls dissolve
+ * into the carousel grid.
+ *
+ * Portrait: the stage wraps the video at full width, capped at 80vh. From md
+ * up the video takes a 40% column (capped at 75vh) and the panel (caption,
+ * speed, controls) sits beside it, vertically centred.
+ *
+ * Captions are stacked in one grid cell: the tallest sets the height and
+ * switching slides crossfades.
  */
 @layer components {
 	.video-stage {
-		@apply grid aspect-square place-items-center border border-border bg-surface md:aspect-auto md:h-112;
+		@apply relative grid aspect-square place-items-center overflow-hidden border border-border md:aspect-auto md:h-112;
 		container-type: size;
+		isolation: isolate;
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			background: var(--poster) center / cover no-repeat;
+			filter: blur(24px) brightness(0.9);
+			transform: scale(1.15);
+		}
 
 		& video {
 			max-width: 100cqw;
@@ -280,15 +299,24 @@
 	}
 
 	.carousel-slide {
-		@apply relative;
+		@apply relative min-w-0;
 	}
 
 	.carousel-speed {
 		@apply absolute right-2 bottom-2 bg-inverse/60 px-1.5 py-0.5 font-mono text-2xs text-inverse-text;
 	}
 
+	.carousel-speed-note {
+		@apply hidden;
+	}
+
+	.carousel-panel,
+	.carousel-controls {
+		display: contents;
+	}
+
 	.carousel-button {
-		@apply row-start-2 flex size-10 items-center justify-center border border-border font-mono text-text hover:border-accent-hover hover:text-accent-hover focus-visible:border-accent md:row-start-1;
+		@apply row-start-2 flex size-10 shrink-0 items-center justify-center border border-border font-mono text-text hover:border-accent-hover hover:text-accent-hover focus-visible:border-accent md:row-start-1;
 	}
 
 	.carousel-prev {
@@ -304,7 +332,7 @@
 	}
 
 	.carousel-caption {
-		@apply col-span-3 grid md:col-span-1 md:col-start-2;
+		@apply col-span-3 row-start-3 grid md:col-span-1 md:col-start-2;
 
 		& > * {
 			grid-area: 1 / 1;
@@ -317,6 +345,60 @@
 			opacity: 1;
 			visibility: visible;
 			transition: opacity 150ms;
+		}
+	}
+
+	/* A single loop: just the stage, full width. */
+	.carousel[data-single] {
+		grid-template-columns: 1fr;
+
+		& .carousel-stage,
+		& .carousel-caption {
+			@apply col-span-1 col-start-1;
+		}
+	}
+
+	.carousel[data-orientation='portrait'] {
+		& .video-stage {
+			@apply flex aspect-auto h-auto justify-center;
+			container-type: normal;
+
+			& video {
+				display: block;
+				max-width: 100%;
+				max-height: 80vh;
+			}
+		}
+
+		@variant md {
+			&:not([data-single]) {
+				@apply items-center gap-x-12;
+				grid-template-columns: 2fr 3fr;
+
+				& .carousel-stage {
+					@apply col-span-1 col-start-1 row-start-1;
+				}
+
+				& .carousel-panel {
+					@apply col-start-2 row-start-1 flex flex-col justify-center gap-8;
+				}
+
+				& .carousel-controls {
+					@apply flex items-center gap-4;
+				}
+
+				& .carousel-speed {
+					@apply hidden;
+				}
+
+				& .carousel-speed-note {
+					@apply block;
+				}
+			}
+
+			& .video-stage video {
+				max-height: 75vh;
+			}
 		}
 	}
 

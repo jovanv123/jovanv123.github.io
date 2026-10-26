@@ -292,6 +292,19 @@
 			@apply font-mono text-sm;
 		}
 
+		/* Figures: full text width, natural aspect ratio, mono caption. */
+		& figure {
+			@apply mt-6;
+
+			& img {
+				@apply h-auto w-full border border-border;
+			}
+		}
+
+		& figcaption {
+			@apply mt-3 font-mono text-xs text-muted;
+		}
+
 		& a {
 			@apply text-accent decoration-accent/40 hover:text-accent-hover;
 		}

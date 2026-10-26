@@ -119,7 +119,7 @@ projects:
       year: 2026
       result: ""                                  # TODO: placement if relevant
       summary: "Software lead for two mirrored differential-drive robots. STM32H7 low-level control in C — 1 kHz PID and odometry, trapezoidal velocity profiles, concurrent FSMs — with a Raspberry Pi 5 strategy and ArUco vision layer over UART. Previous season: trained the game-element recognition model for dynamic strategy."
-      media: "media/eurobot.mp4"                  # TODO
+      media: "media/eurobot/movement2.mp4"
       tags: ["STM32H7", "C", "Raspberry Pi", "OpenCV", "FSM"]
       repo_url: ""
       featured: true

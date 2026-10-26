@@ -7,14 +7,21 @@ import Section from '../components/Section.astro';
 import EducationTimeline from '../components/EducationTimeline.astro';
 import FieldRobot from '../components/FieldRobot.astro';
 import VideoLoop from '../components/VideoLoop.astro';
-import { getProjects } from '../lib/projects';
-import { formatDate, getSite, posterFor, resolveHref, socialLinks } from '../lib/site';
+import { coverUrl, getProjects, videoPoster } from '../lib/projects';
+import { formatDate, getSite, resolveHref, socialLinks } from '../lib/site';
 
 const site = await getSite();
 const { profile, experience, education, skills, contact } = site;
 const socials = socialLinks(site);
 
 const projects = await getProjects();
+// Card thumbnail: the cover, else the first carousel video's poster, else the hover loop's.
+const thumbs = await Promise.all(
+	projects.map(async ({ data }) => {
+		const cover = await coverUrl(data);
+		return cover ?? (data.videos[0] ? videoPoster(data.videos[0]) : data.media && videoPoster({ src: data.media }));
+	}),
+);
 
 // Hero photo from src/assets/<profile.photo>; a framed placeholder renders until the file exists.
 const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/*.{jpg,jpeg,png,webp}', { eager: true });
@@ -68,11 +75,13 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 				<span class="text-muted">01 —</span> {site.projects.heading}
 			</h2>
 			<ul class="mt-10 grid gap-6 md:grid-cols-3" aria-label={site.featured.heading}>
-				{projects.map(({ data }) => (
+				{projects.map(({ data }, i) => (
 					<li class="min-w-0">
 						<a href={`/projects/${data.slug}`} class="group flex h-full flex-col border border-border bg-background text-text no-underline hover:border-accent-hover hover:text-text focus-visible:border-accent">
-							{data.media && (
-								<VideoLoop src={data.media} poster={data.videos[0] && (data.videos[0].poster ?? posterFor(data.videos[0].src))} autoplay={false} preload="none" class="aspect-4/5 w-full border-b border-border bg-surface object-cover" style={data.focus && { objectPosition: data.focus }} data-thumb aria-hidden="true" />
+							{data.media ? (
+								<VideoLoop src={data.media} poster={thumbs[i]} autoplay={false} preload="none" class="aspect-4/5 w-full border-b border-border bg-surface object-cover" style={data.focus && { objectPosition: data.focus }} data-thumb aria-hidden="true" />
+							) : data.cover && (
+								<Image src={data.cover.src} alt="" widths={[360, 720]} sizes="(min-width: 768px) 33vw, 100vw" class="aspect-4/5 w-full border-b border-border object-cover" style={data.focus && { objectPosition: data.focus }} />
 							)}
 							<div class="flex flex-1 flex-col gap-2 p-5">
 								<h3 class="text-xl tracking-tight group-hover:text-accent-hover group-focus-visible:text-accent">{data.title}</h3>

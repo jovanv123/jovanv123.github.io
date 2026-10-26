@@ -4,7 +4,7 @@ import { Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import VideoCarousel from '../../components/VideoCarousel.astro';
 import CaseStudy from '../../components/CaseStudy.astro';
-import { getProjects } from '../../lib/projects';
+import { coverUrl, getProjects, videoPoster } from '../../lib/projects';
 
 export async function getStaticPaths() {
 	const projects = await getProjects();
@@ -18,6 +18,12 @@ export async function getStaticPaths() {
 const { project, next } = Astro.props;
 const { data } = project;
 const { Content } = await render(project);
+
+// Carousel posters fall back to the cover where a video has no .jpg next to it.
+const cover = await coverUrl(data, 1600);
+const slides = (data.videos.length > 0 ? data.videos : data.media ? [{ src: data.media, title: data.cover?.alt ?? data.title, text: '' }] : []).map(
+	(video) => ({ ...video, poster: videoPoster(video, cover) }),
+);
 
 // Metadata row: Year · Role · Result · Stack, hidden when empty.
 const facts = [
@@ -54,12 +60,10 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 			</dl>
 		</header>
 
-		{/* Media first: video carousel, else the single loop (same stage, no controls), else the cover. */}
+		{/* Media: video carousel, else the single loop (same stage, no controls), else the cover. */}
 		<div class="mt-8 md:mt-12">
-			{data.videos.length > 0 ? (
-				<VideoCarousel items={data.videos} />
-			) : data.media ? (
-				<VideoCarousel items={[{ src: data.media, title: data.cover?.alt ?? data.title, text: '' }]} />
+			{slides.length > 0 ? (
+				<VideoCarousel items={slides} />
 			) : data.cover && (
 				<Image src={data.cover.src} alt={data.cover.alt} widths={[640, 1100, 2200]} sizes={sizes} class="h-auto w-full" />
 			)}

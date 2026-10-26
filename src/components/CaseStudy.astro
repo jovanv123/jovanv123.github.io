@@ -1,0 +1,48 @@
+---
+interface Props {
+	/** Frontmatter `stats`, shown at the top of the Results section. */
+	stats: { value: string; label: string }[];
+}
+
+// Shapes the rendered MDX body (the default slot) into numbered two-column sections:
+// each `## Heading` and what follows it becomes
+// <section class="cs-section"><div class="cs-head">01 + h2</div><div class="cs-body">…</div></section>
+// (the number is a CSS counter shared with the page's Gallery and Links). Paragraphs,
+// list items and headings starting with "TODO" are dropped, and so are sections left empty.
+// Done on the HTML because the Markdown processor (satteri) runs no rehype plugins.
+const { stats } = Astro.props;
+
+const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const isEmpty = (html: string) => !html.replace(/<!--[\s\S]*?-->/g, '').trim();
+
+const statsHtml = stats.length
+	? `<ul class="cs-stats">${stats
+			.map((s) => `<li class="cs-stat"><p class="cs-stat-value">${escape(s.value)}</p><p class="cs-stat-label">${escape(s.label)}</p></li>`)
+			.join('')}</ul>`
+	: '';
+
+const raw = (await Astro.slots.render('default'))
+	// TODO lines: whole paragraphs, list items and headings whose text starts with "TODO".
+	.replace(/<(p|li|h[1-6])\b[^>]*>\s*TODO[\s\S]*?<\/\1>/g, '')
+	// Lists whose items were all TODOs.
+	.replace(/<(ul|ol)\b[^>]*>\s*<\/\1>/g, '');
+
+// Split before each h2 (a zero-width split at index 0 yields no empty first part, so cut the intro off first).
+const first = raw.search(/<h2\b/);
+const intro = first < 0 ? raw : raw.slice(0, first);
+const parts = first < 0 ? [] : raw.slice(first).split(/(?=<h2\b)/);
+const html =
+	intro +
+	parts
+		.map((part) => {
+			const end = part.indexOf('</h2>') + '</h2>'.length;
+			const heading = part.slice(0, end);
+			const title = heading.replace(/<[^>]+>/g, '').trim().toLowerCase();
+			const body = (title === 'results' ? statsHtml : '') + part.slice(end);
+			if (isEmpty(body)) return '';
+			return `<section class="cs-section"><div class="cs-head"><span class="cs-num"></span>${heading}</div><div class="cs-body">${body}</div></section>`;
+		})
+		.join('');
+---
+
+<Fragment set:html={html} />

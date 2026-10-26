@@ -6,31 +6,35 @@ role: "Team lead"
 year: 2026
 result: "4th / 160+ teams"                          # card footer
 result_detail: "4th of 160+ teams, qualifying round"  # project page
-summary: "Team lead. Full autonomy pipeline for inserting SFP and SC connectors: YOLO segmentation across three wrist cameras, SVD/DLT triangulation, PCA orientation estimation and impedance-controlled insertion on a UR5e. Transferred to a real xArm7 cell. Paper in preparation."
+summary: "For the Intrinsic AI for Industry Challenge, I led a team building a robot that autonomously plugs fibre-optic connectors into network hardware. We compared stereo reconstruction (YOLO segmentation with SVD triangulation) against direct 3D estimation, with force-controlled insertion, and validated both in simulation and on a real xArm7 cell. We finished 4th of 160+ teams, and a paper is in preparation."
 media: "media/cable-insertion/irl-insert.mp4"   # home card hover preview
 # focus: "50% 50%"                               # card crop (object-position), default centre
 videos:                                          # project page carousel, in order
   - src: "media/cable-insertion/gazeboinsertion.mp4"
     poster: "media/cable-insertion/gazeboinsertion.jpg"
     orientation: "landscape"
-    title: "Simulation · Gazebo"
-    text: "Connector pre-attached to the gripper; YOLO segmentation on three wrist cameras, SVD/DLT triangulation of the port, impedance-controlled insertion."
+    title: "Simulation · Gazebo · UR5e"
+    text: "Gazebo simulation on a UR5e: pose estimation, then a force-guided spiral search to a successful insertion."
     speed: "2×"
   - src: "media/cable-insertion/irl-insert.mp4"
     poster: "media/cable-insertion/irl-insert.jpg"
     orientation: "portrait"
-    title: "Real cell · insertion 1"
-    text: "TODO: what this run shows."
+    title: "Real cell · xArm7"
+    text: "Real-world insertion with the same pipeline on a different arm, an xArm7."
     speed: "2×"
   - src: "media/cable-insertion/irl-insert2.mp4"
     poster: "media/cable-insertion/irl-insert2.jpg"
     orientation: "portrait"
-    title: "Real cell · insertion 2"
-    text: "TODO: what this run shows."
+    title: "Real cell · new object poses"
+    text: "Same task with the connector and target moved to new poses."
     speed: "2×"
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
+stats:
+  - { value: "4th", label: "of 160+ teams, qualifying" }
+  - { value: "2", label: "perception approaches compared" }
+  - { value: "Sim → Real", label: "UR5e to xArm7" }
 tags: ["ROS 2", "Gazebo", "OpenCV", "PyTorch", "Python", "UR5e", "xArm7"]
 # repo_url:
 # paper_url:
@@ -39,20 +43,17 @@ featured: true
 
 ## Problem
 
-TODO — why connector insertion is hard (tolerances, occlusion, contact).
+Fully learned AI policies are often non-deterministic: the same scene can produce different outcomes from run to run. That’s risky in industrial assembly, especially with small, fragile parts like fibre-optic connectors, which need sub-millimetre alignment and break if forced.
 
 ## Architecture
 
-Two tracks — stereo 2D segmentation + 3D reconstruction vs. direct 3D
-estimation. Impedance control with F/T feedback for the insertion phase.
-Simulation in Gazebo and Intrinsic Flowstate; transfer to a real xArm7 cell
-with RGB cameras.
+The system combines camera-based pose estimation with finely tuned impedance control. Perception gets the gripper close, using either stereo reconstruction (YOLO segmentation + SVD triangulation) or direct 3D estimation. Compliant control with force feedback and a spiral search then finds the port despite small estimation errors. The result is predictable behaviour that transferred from a simulated UR5e to a real xArm7.
 
 ## My contribution
 
-Team lead; perception pipeline and insertion policy.
+Led the team and developed the perception pipeline and the impedance-controlled insertion policy.
 
 ## Results
 
-4th of 160+ teams in qualifying. Direct 3D estimation outperformed the
-reconstruction approach. TODO: success rate / timing numbers.
+Direct 3D estimation proved more robust than stereo reconstruction.
+{/* TODO: success rate / timing numbers. */}

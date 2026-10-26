@@ -40,6 +40,8 @@ const projects = defineCollection({
 					}),
 				)
 				.default([]),
+			// Shown as large figures at the top of the Results section.
+			stats: z.array(z.object({ value: z.string(), label: z.string() })).default([]),
 			gallery: z.array(figure).default([]),
 			tags: z.array(z.string()),
 			repo_url: z.url().optional(),

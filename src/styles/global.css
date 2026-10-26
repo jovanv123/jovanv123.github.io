@@ -292,19 +292,6 @@
 			@apply font-mono text-sm;
 		}
 
-		/* Figures: full text width, natural aspect ratio, mono caption. */
-		& figure {
-			@apply mt-6;
-
-			& img {
-				@apply h-auto w-full border border-border;
-			}
-		}
-
-		& figcaption {
-			@apply mt-3 font-mono text-xs text-muted;
-		}
-
 		& a {
 			@apply text-accent decoration-accent/40 hover:text-accent-hover;
 		}
@@ -353,7 +340,7 @@
  * Project videos are never cropped. The video stage is a fixed-height hairline
  * frame (60vh on mobile, min(70vh, 600px) from md) filled with a blurred,
  * darkened copy of the active poster (--poster, set by the carousel); every
- * video, landscape or portrait, sits whole in its centre. The slide sizes to
+ * video or image, landscape or portrait, sits whole in its centre. The slide sizes to
  * the video, so the speed chip sits in the video's own corner. ← / → overlay
  * the stage edges. Captions are stacked in one grid cell: the tallest sets the
  * height and switching slides crossfades.
@@ -375,8 +362,11 @@
 			transform: scale(1.15);
 		}
 
-		& video {
+		& video,
+		& img {
 			display: block;
+			width: auto;
+			height: auto;
 			max-width: 100cqw;
 			max-height: 100cqh;
 			object-fit: contain;

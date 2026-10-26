@@ -20,25 +20,37 @@ const projects = defineCollection({
 			summary: z.string(),
 			cover: figure.omit({ caption: true }).optional(),
 			// Video loop in public/, e.g. "media/<slug>.mp4": the card's hover preview, and the
-			// project page hero when there are no `videos`. Poster is the .jpg next to it.
+			// project page hero when there are no `slides`. Poster is the .jpg next to it.
 			media: z.string().optional(),
 			// object-position for the card's 4:5 crop of the poster/loop, e.g. "50% 60%". Default centre.
 			focus: z.string().optional(),
-			// Project page video carousel (replaces the hero loop). The first poster is also the card thumbnail.
-			videos: z
+			// Project page media carousel, in order. Video slides are files in public/ (poster: the
+			// .jpg next to it, else the cover); image slides are relative to index.mdx, e.g. "./robot.jpg".
+			// Card thumbnail: the cover, else the first video's poster.
+			slides: z
 				.array(
-					z.object({
-						src: z.string(),
-						poster: z.string().optional(),
-						title: z.string(),
-						text: z.string(),
-						speed: z.string().optional(),
-					}),
+					z.discriminatedUnion('type', [
+						z.object({
+							type: z.literal('video'),
+							src: z.string(),
+							poster: z.string().optional(),
+							title: z.string(),
+							text: z.string(),
+							speed: z.string().optional(),
+						}),
+						z.object({
+							type: z.literal('image'),
+							src: image(),
+							alt: z.string(),
+							title: z.string(),
+							text: z.string(),
+						}),
+					]),
 				)
 				.default([]),
+			gallery: z.array(figure).default([]),
 			// Shown as large figures at the top of the Results section.
 			stats: z.array(z.object({ value: z.string(), label: z.string() })).default([]),
-			gallery: z.array(figure).default([]),
 			tags: z.array(z.string()),
 			repo_url: z.url().optional(),
 			paper_url: z.url().optional(),

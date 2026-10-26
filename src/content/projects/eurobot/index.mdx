@@ -6,27 +6,31 @@ role: "Software lead"
 year: 2026
 result: "Own control stack, from scratch"
 summary: "Wrote the robots’ entire low-level control stack from scratch in C on an STM32H7: 1 kHz PID and encoder odometry, trapezoidal motion profiles, actuator drivers and the behaviour state machines. Integrated it over UART with a ROS 2 high-level layer on a Raspberry Pi 5 running ArUco-based perception and match strategy."
-media: "media/eurobot/movement2.mp4"   # home card hover preview
+media: "media/eurobot/eurobot.mp4"   # home card hover preview
 # focus: "50% 50%"   # card crop (object-position), default centre
 cover: { src: "./robot.jpg", alt: "Eurobot competition robot" }   # card thumbnail, poster fallback
-videos:                                          # project page carousel, in order
-  - src: "media/eurobot/eurobot.mp4"
+slides:                                          # project page carousel, in order
+  - type: "video"
+    src: "media/eurobot/eurobot.mp4"
     poster: "media/eurobot/eurobot.jpg"
     title: "Match run"
     text: "Autonomous run on the competition field."
-  - src: "media/eurobot/movement2.mp4"
-    poster: "media/eurobot/movement2.jpg"
-    title: "Motion control"
-    text: "Trapezoidal velocity profiles and rotate-then-translate control on the STM32H7."
+  - type: "image"
+    src: "./robot.jpg"
+    alt: "Eurobot competition robot"
+    title: "The robot"
+    text: "The competition robot."
+  - type: "image"
+    src: "./me_working.jpg"
+    alt: "Jovan Vasić working on the robot"
+    title: "Working on the robot"
+    text: "Working on the robot’s electronics and firmware."
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
 tags: ["C", "STM32H7", "ROS 2", "Raspberry Pi", "OpenCV", "Python"]
 # repo_url:
 featured: true
 ---
-
-import { Image } from 'astro:assets';
-import meWorking from './me_working.jpg';
 
 ## Problem
 
@@ -45,11 +49,6 @@ TODO — control architecture diagram (Mermaid), FSM design.
   ArUco-based perception and match strategy.
 - Software lead: the software architecture across both robots.
 - Previous season: trained the game-element recognition model for dynamic strategy.
-
-<figure>
-	<Image src={meWorking} alt="Jovan Vasić working on the robot" widths={[680, 1360]} sizes="(min-width: 680px) 680px, 100vw" />
-	<figcaption>Fig. 1 — Working on the robot’s electronics and firmware.</figcaption>
-</figure>
 
 ## Results
 

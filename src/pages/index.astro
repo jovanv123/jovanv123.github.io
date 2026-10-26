@@ -19,7 +19,8 @@ const projects = await getProjects();
 const thumbs = await Promise.all(
 	projects.map(async ({ data }) => {
 		const cover = await coverUrl(data);
-		return cover ?? (data.videos[0] ? videoPoster(data.videos[0]) : data.media && videoPoster({ src: data.media }));
+		const video = data.slides.find((slide) => slide.type === 'video');
+		return cover ?? (video ? videoPoster(video) : data.media && videoPoster({ src: data.media }));
 	}),
 );
 

@@ -1,20 +1,28 @@
 ---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
 import VideoLoop from './VideoLoop.astro';
-import { posterFor, resolveHref } from '../lib/site';
+import { resolveHref } from '../lib/site';
+
+type Caption = { title: string; text: string; poster: string };
+export type Slide =
+	| (Caption & { type: 'video'; src: string; speed?: string })
+	| (Caption & { type: 'image'; src: ImageMetadata; alt: string });
 
 interface Props {
-	/** The project's `videos` frontmatter, or the single `media` loop (empty text). */
-	items: { src: string; poster?: string; title: string; text: string; speed?: string }[];
+	/** The project's `slides` with posters resolved to URLs (an image is its own poster), or the single `media` loop (empty text). */
+	items: Slide[];
 }
 
-// One video at a time on a fixed-height stage (the page never jumps between slides),
-// shown whole and centred, with a blurred, darkened copy of its poster filling the rest.
-// Only the active slide loads and plays. ← / → sit on the stage edges; below it the
-// title and the 01 / 03 counter share a row, the description under them. A single
-// loop without text has no controls or caption. Styles live in global.css (.carousel).
+// One slide at a time on a fixed-height stage (the page never jumps between slides):
+// a video or an image, shown whole and centred, with a blurred, darkened copy of its
+// poster filling the rest. Only the active video loads and plays. ← / → sit on the
+// stage edges; below it the title and the 01 / 03 counter share a row, the description
+// under them. A single loop without text has no controls or caption. Styles live in
+// global.css (.carousel).
 const { items } = Astro.props;
 const pad = (n: number) => String(n).padStart(2, '0');
-const posters = items.map((item) => resolveHref(item.poster ?? posterFor(item.src)));
+const posters = items.map((item) => resolveHref(item.poster));
 const single = items.length === 1;
 const captioned = items.some((item) => item.text);
 const fill = (i: number) => `--poster: url('${posters[i]}')`;
@@ -25,19 +33,23 @@ const fill = (i: number) => `--poster: url('${posters[i]}')`;
 	data-carousel
 	tabindex={single ? undefined : 0}
 	aria-roledescription={single ? undefined : 'carousel'}
-	aria-label={single ? items[0].title : 'Project videos'}
+	aria-label={single ? items[0].title : 'Project media'}
 >
 	<div class="video-stage" style={fill(0)} data-stage>
 		{items.map((item, i) => (
 			<figure class="carousel-slide" hidden={i > 0} data-slide data-poster={posters[i]}>
-				<VideoLoop src={item.src} poster={posters[i]} autoplay={i === 0} preload={i === 0 ? 'metadata' : 'none'} aria-label={item.title} />
-				{item.speed && <span class="carousel-speed">{item.speed} speed</span>}
+				{item.type === 'video' ? (
+					<VideoLoop src={item.src} poster={posters[i]} autoplay={i === 0} preload={i === 0 ? 'metadata' : 'none'} aria-label={item.title} />
+				) : (
+					<Image src={item.src} alt={item.alt} widths={[640, 1100, 2200]} sizes="(min-width: 1100px) 1100px, 100vw" loading={i === 0 ? 'eager' : 'lazy'} />
+				)}
+				{item.type === 'video' && item.speed && <span class="carousel-speed">{item.speed} speed</span>}
 			</figure>
 		))}
 		{!single && (
 			<>
-				<button type="button" class="carousel-button carousel-prev" aria-label="Previous video" data-prev>←</button>
-				<button type="button" class="carousel-button carousel-next" aria-label="Next video" data-next>→</button>
+				<button type="button" class="carousel-button carousel-prev" aria-label="Previous slide" data-prev>←</button>
+				<button type="button" class="carousel-button carousel-next" aria-label="Next slide" data-next>→</button>
 			</>
 		)}
 	</div>
@@ -69,8 +81,9 @@ const fill = (i: number) => `--poster: url('${posters[i]}')`;
 		const show = (index: number) => {
 			current = (index + slides.length) % slides.length;
 			slides.forEach((slide, i) => {
-				const video = slide.querySelector('video')!;
+				const video = slide.querySelector('video');
 				slide.hidden = i !== current;
+				if (!video) return;
 				if (i === current) {
 					video.preload = 'metadata';
 					video.play().catch(() => {});

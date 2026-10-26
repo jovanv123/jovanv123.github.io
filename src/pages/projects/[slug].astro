@@ -32,36 +32,38 @@ const links = [
 	data.paper_url ? { label: 'Paper', href: data.paper_url } : null,
 ].filter((link) => link !== null);
 
-const sizes = '(min-width: 800px) 800px, 100vw';
+const sizes = '(min-width: 1100px) 1100px, 100vw';
 ---
 
 <BaseLayout title={data.title} description={data.summary}>
-	<article class="project pt-16 md:pt-24">
-		<header>
-			<p class="meta"><a href="/#projects" class="no-underline">← Work</a></p>
-			<h1 class="mt-10 text-4xl leading-none tracking-tighter sm:text-5xl md:text-6xl">{data.title}</h1>
-			<p class="mt-6 font-mono text-sm text-muted">{data.context}</p>
+	<article class="project pt-12">
+		{/* Title and context left (~60%), metadata as a 2×2 grid right; stacked on mobile. */}
+		<header class="grid gap-8 md:grid-cols-5 md:gap-12">
+			<div class="md:col-span-3">
+				<p class="meta"><a href="/#projects" class="no-underline">← Work</a></p>
+				<h1 class="mt-3 text-title tracking-tighter">{data.title}</h1>
+				<p class="mt-3 font-mono text-sm text-muted">{data.context}</p>
+			</div>
+			<dl class="grid grid-cols-2 content-start gap-x-8 gap-y-5 border-t border-border pt-5 md:col-span-2 md:border-t-0 md:pt-0">
+				{facts.map((fact) => (
+					<div>
+						<dt class="meta">{fact.label}</dt>
+						<dd class:list={['mt-1 text-sm', fact.mono && 'font-mono']}>{fact.value}</dd>
+					</div>
+				))}
+			</dl>
 		</header>
 
 		{/* Media first: video carousel, else the single loop (same stage, no controls), else the cover. */}
-		<div class="mt-12">
+		<div class="mt-8 md:mt-12">
 			{data.videos.length > 0 ? (
 				<VideoCarousel items={data.videos} />
 			) : data.media ? (
-				<VideoCarousel items={[{ src: data.media, title: data.cover?.alt ?? data.title, text: '', orientation: data.orientation }]} />
+				<VideoCarousel items={[{ src: data.media, title: data.cover?.alt ?? data.title, text: '' }]} />
 			) : data.cover && (
-				<Image src={data.cover.src} alt={data.cover.alt} widths={[640, 800, 1600]} sizes={sizes} class="h-auto w-full" />
+				<Image src={data.cover.src} alt={data.cover.alt} widths={[640, 1100, 2200]} sizes={sizes} class="h-auto w-full" />
 			)}
 		</div>
-
-		<dl class="mt-12 grid grid-cols-2 gap-x-8 gap-y-6 border-y border-border py-6 md:grid-cols-4">
-			{facts.map((fact) => (
-				<div>
-					<dt class="meta">{fact.label}</dt>
-					<dd class:list={['mt-2 text-sm', fact.mono && 'font-mono']}>{fact.value}</dd>
-				</div>
-			))}
-		</dl>
 
 		<p class="summary mt-8 md:mt-12">{data.summary}</p>
 
@@ -74,7 +76,7 @@ const sizes = '(min-width: 800px) 800px, 100vw';
 					{data.gallery.map((item) => (
 						<li class="py-8 first:pt-0 last:pb-0">
 							<figure>
-								<Image src={item.src} alt={item.alt} widths={[640, 800, 1600]} sizes={sizes} class="h-auto w-full" />
+								<Image src={item.src} alt={item.alt} widths={[640, 1100, 2200]} sizes={sizes} class="h-auto w-full" />
 								{item.caption && <figcaption class="meta mt-4 max-w-text">{item.caption}</figcaption>}
 							</figure>
 						</li>

@@ -2,19 +2,16 @@
 import VideoLoop from './VideoLoop.astro';
 import { posterFor, resolveHref } from '../lib/site';
 
-type Orientation = 'portrait' | 'landscape';
-
 interface Props {
 	/** The project's `videos` frontmatter, or the single `media` loop (empty text). */
-	items: { src: string; poster?: string; title: string; text: string; speed?: string; orientation?: Orientation }[];
+	items: { src: string; poster?: string; title: string; text: string; speed?: string }[];
 }
 
-// One video at a time, shown whole on a stage filled with a blurred copy of its
-// poster. Only the active slide loads and plays. The root's data-orientation
-// follows the active slide (frontmatter, else the video's metadata): landscape
-// keeps the full-column stage with buttons flanking it from md up; portrait puts
-// the video in a 40% column with the caption and controls beside it from md up.
-// A single loop without text has no controls or caption. Styles live in global.css (.carousel).
+// One video at a time on a fixed-height stage (the page never jumps between slides),
+// shown whole and centred, with a blurred, darkened copy of its poster filling the rest.
+// Only the active slide loads and plays. ← / → sit on the stage edges; below it the
+// title and the 01 / 03 counter share a row, the description under them. A single
+// loop without text has no controls or caption. Styles live in global.css (.carousel).
 const { items } = Astro.props;
 const pad = (n: number) => String(n).padStart(2, '0');
 const posters = items.map((item) => resolveHref(item.poster ?? posterFor(item.src)));
@@ -26,40 +23,37 @@ const fill = (i: number) => `--poster: url('${posters[i]}')`;
 <section
 	class="carousel"
 	data-carousel
-	data-orientation={items[0].orientation ?? 'landscape'}
-	data-single={single || undefined}
 	tabindex={single ? undefined : 0}
 	aria-roledescription={single ? undefined : 'carousel'}
 	aria-label={single ? items[0].title : 'Project videos'}
 >
-	<div class="video-stage carousel-stage" style={fill(0)} data-stage>
+	<div class="video-stage" style={fill(0)} data-stage>
 		{items.map((item, i) => (
-			<figure class="carousel-slide" hidden={i > 0} data-slide data-poster={posters[i]} data-orientation={item.orientation}>
+			<figure class="carousel-slide" hidden={i > 0} data-slide data-poster={posters[i]}>
 				<VideoLoop src={item.src} poster={posters[i]} autoplay={i === 0} preload={i === 0 ? 'metadata' : 'none'} aria-label={item.title} />
 				{item.speed && <span class="carousel-speed">{item.speed} speed</span>}
 			</figure>
 		))}
+		{!single && (
+			<>
+				<button type="button" class="carousel-button carousel-prev" aria-label="Previous video" data-prev>←</button>
+				<button type="button" class="carousel-button carousel-next" aria-label="Next video" data-next>→</button>
+			</>
+		)}
 	</div>
-	<div class="carousel-panel">
-		{captioned && (
+	{(captioned || !single) && (
+		<div class="carousel-meta">
 			<div class="carousel-caption" aria-live="polite">
 				{items.map((item, i) => (
 					<div class:list={['carousel-text', i === 0 && 'is-active']} data-caption>
 						<p class="font-mono text-sm">{item.title}</p>
-						<p class="mt-2 text-muted">{item.text}</p>
-						{item.speed && <p class="carousel-speed-note meta mt-4">{item.speed} speed</p>}
+						{item.text && <p class="mt-3 max-w-text text-muted">{item.text}</p>}
 					</div>
 				))}
 			</div>
-		)}
-		{!single && (
-			<div class="carousel-controls">
-				<button type="button" class="carousel-button carousel-prev" aria-label="Previous video" data-prev>←</button>
-				<p class="carousel-counter meta"><span data-index>01</span> / {pad(items.length)}</p>
-				<button type="button" class="carousel-button carousel-next" aria-label="Next video" data-next>→</button>
-			</div>
-		)}
-	</div>
+			{!single && <p class="carousel-counter meta"><span data-index>01</span> / {pad(items.length)}</p>}
+		</div>
+	)}
 </section>
 
 <script>
@@ -71,16 +65,6 @@ const fill = (i: number) => `--poster: url('${posters[i]}')`;
 		const stage = root.querySelector<HTMLElement>('[data-stage]')!;
 		let current = 0;
 		let inView = false;
-
-		// Orientation from frontmatter, else from the video once its metadata is in.
-		const orient = () => {
-			const slide = slides[current];
-			const video = slide.querySelector('video')!;
-			let orientation = slide.dataset.orientation;
-			if (!orientation && video.videoWidth) orientation = video.videoWidth < video.videoHeight ? 'portrait' : 'landscape';
-			if (orientation) root.dataset.orientation = orientation;
-		};
-		for (const slide of slides) slide.querySelector('video')!.addEventListener('loadedmetadata', orient);
 
 		const show = (index: number) => {
 			current = (index + slides.length) % slides.length;
@@ -98,9 +82,7 @@ const fill = (i: number) => `--poster: url('${posters[i]}')`;
 			stage.style.setProperty('--poster', `url('${slides[current].dataset.poster}')`);
 			captions.forEach((caption, i) => caption.classList.toggle('is-active', i === current));
 			if (counter) counter.textContent = String(current + 1).padStart(2, '0');
-			orient();
 		};
-		orient();
 
 		if (slides.length < 2) continue;
 

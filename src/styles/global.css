@@ -47,6 +47,11 @@
 	--text-stat: 2.5rem;
 	--text-stat--line-height: 1;
 	--grid-template-columns-case: 12.5rem 1fr;
+	--text-title: clamp(2.25rem, 4vw, 3.25rem);
+	--text-title--line-height: 1.05;
+	/* Project video stage height (mobile / from md). */
+	--stage-height: 60vh;
+	--stage-height-md: min(70vh, 600px);
 	/* Chips on video (carousel speed label): text-2xs. */
 	--text-2xs: 0.6875rem;
 
@@ -211,20 +216,20 @@
 }
 
 /*
- * Project page: one centred column (header, media, figures). Case-study
+ * Project page: the full content width (1100px). Case-study
  * sections (built from the MDX by src/components/CaseStudy.astro, plus Gallery
  * and Links) are two-column rows: mono accent counter + heading on the left,
- * body on the right; stacked on mobile, a hairline between rows.
+ * body on the right (capped at the text width); stacked on mobile, a hairline
+ * between rows.
  */
 @layer components {
 	.project {
-		@apply mx-auto max-w-column;
 		counter-reset: section;
 	}
 
 	/* Summary: pull quote with a 2px accent rule. */
 	.summary {
-		@apply border-l-2 border-accent pl-5 text-xl leading-relaxed;
+		@apply max-w-text border-l-2 border-accent pl-5 text-xl leading-relaxed;
 	}
 
 	.cs-section {
@@ -235,6 +240,10 @@
 	/* Gallery: images take the full column under the heading. */
 	.cs-section-wide {
 		@apply md:grid-cols-1 md:gap-y-6;
+
+		& .cs-body {
+			@apply max-w-none;
+		}
 	}
 
 	.cs-head {
@@ -251,7 +260,7 @@
 	}
 
 	.cs-body {
-		@apply min-w-0 text-case;
+		@apply min-w-0 max-w-text text-case;
 
 		& > :first-child {
 			@apply mt-0;
@@ -328,28 +337,20 @@
 }
 
 /*
- * Project videos are never cropped. A video stage is a hairline frame filled
- * with a blurred, darkened copy of the active poster (--poster, set by the
- * carousel), so leftover space never reads as empty bars. The slide sizes to
- * the video, so the speed chip sits in the video's own corner.
- *
- * Landscape (default): a fixed-height size container (square below md); the
- * video scales down to fit it whole. Buttons flank it from md up and sit
- * beside the counter below it; .carousel-panel and .carousel-controls dissolve
- * into the carousel grid.
- *
- * Portrait: the stage wraps the video at full width, capped at 80vh. From md
- * up the video takes a 40% column (capped at 75vh) and the panel (caption,
- * speed, controls) sits beside it, vertically centred.
- *
- * Captions are stacked in one grid cell: the tallest sets the height and
- * switching slides crossfades.
+ * Project videos are never cropped. The video stage is a fixed-height hairline
+ * frame (60vh on mobile, min(70vh, 600px) from md) filled with a blurred,
+ * darkened copy of the active poster (--poster, set by the carousel); every
+ * video, landscape or portrait, sits whole in its centre. The slide sizes to
+ * the video, so the speed chip sits in the video's own corner. ← / → overlay
+ * the stage edges. Captions are stacked in one grid cell: the tallest sets the
+ * height and switching slides crossfades.
  */
 @layer components {
 	.video-stage {
-		@apply relative grid aspect-square place-items-center overflow-hidden border border-border md:aspect-auto md:h-112;
+		@apply relative grid h-(--stage-height) place-items-center overflow-hidden border border-border md:h-(--stage-height-md);
 		container-type: size;
 		isolation: isolate;
+		touch-action: pan-y;
 
 		&::before {
 			content: '';
@@ -362,19 +363,11 @@
 		}
 
 		& video {
+			display: block;
 			max-width: 100cqw;
 			max-height: 100cqh;
+			object-fit: contain;
 		}
-	}
-
-	.carousel {
-		@apply grid items-center gap-4;
-		grid-template-columns: auto 1fr auto;
-	}
-
-	.carousel-stage {
-		@apply col-span-3 md:col-span-1 md:col-start-2 md:row-start-1;
-		touch-action: pan-y;
 	}
 
 	.carousel-slide {
@@ -385,29 +378,24 @@
 		@apply absolute right-2 bottom-2 bg-inverse/60 px-1.5 py-0.5 font-mono text-2xs text-inverse-text;
 	}
 
-	.carousel-speed-note {
-		@apply hidden;
-	}
-
-	.carousel-panel,
-	.carousel-controls {
-		display: contents;
-	}
-
 	.carousel-button {
-		@apply row-start-2 flex size-10 shrink-0 items-center justify-center border border-border font-mono text-text hover:border-accent-hover hover:text-accent-hover focus-visible:border-accent md:row-start-1;
+		@apply absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center bg-inverse/60 font-mono text-inverse-text transition-colors hover:bg-accent-hover focus-visible:bg-accent motion-reduce:transition-none;
 	}
 
 	.carousel-prev {
-		@apply col-start-1;
+		@apply left-0;
 	}
 
 	.carousel-next {
-		@apply col-start-3;
+		@apply right-0;
+	}
+
+	.carousel-meta {
+		@apply mt-3 flex items-start justify-between gap-6;
 	}
 
 	.carousel-counter {
-		@apply col-start-2 row-start-2 text-center;
+		@apply shrink-0;
 	}
 
 	.carousel:hover .carousel-counter {
@@ -415,7 +403,7 @@
 	}
 
 	.carousel-caption {
-		@apply col-span-3 row-start-3 grid md:col-span-1 md:col-start-2;
+		@apply grid min-w-0 flex-1;
 
 		& > * {
 			grid-area: 1 / 1;
@@ -428,60 +416,6 @@
 			opacity: 1;
 			visibility: visible;
 			transition: opacity 150ms;
-		}
-	}
-
-	/* A single loop: just the stage, full width. */
-	.carousel[data-single] {
-		grid-template-columns: 1fr;
-
-		& .carousel-stage,
-		& .carousel-caption {
-			@apply col-span-1 col-start-1;
-		}
-	}
-
-	.carousel[data-orientation='portrait'] {
-		& .video-stage {
-			@apply flex aspect-auto h-auto justify-center;
-			container-type: normal;
-
-			& video {
-				display: block;
-				max-width: 100%;
-				max-height: 80vh;
-			}
-		}
-
-		@variant md {
-			&:not([data-single]) {
-				@apply items-center gap-x-12;
-				grid-template-columns: 2fr 3fr;
-
-				& .carousel-stage {
-					@apply col-span-1 col-start-1 row-start-1;
-				}
-
-				& .carousel-panel {
-					@apply col-start-2 row-start-1 flex flex-col justify-center gap-8;
-				}
-
-				& .carousel-controls {
-					@apply flex items-center gap-4;
-				}
-
-				& .carousel-speed {
-					@apply hidden;
-				}
-
-				& .carousel-speed-note {
-					@apply block;
-				}
-			}
-
-			& .video-stage video {
-				max-height: 75vh;
-			}
 		}
 	}
 

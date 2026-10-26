@@ -7,7 +7,6 @@ const projects = defineCollection({
 	loader: glob({ pattern: '*/index.mdx', base: './src/content/projects' }),
 	schema: ({ image }) => {
 		// Image paths are relative to index.mdx, e.g. "./cover.jpg".
-		const orientation = z.enum(['portrait', 'landscape']);
 		const figure = z.object({ src: image(), alt: z.string(), caption: z.string().optional() });
 		return z.object({
 			title: z.string(),
@@ -25,8 +24,6 @@ const projects = defineCollection({
 			media: z.string().optional(),
 			// object-position for the card's 4:5 crop of the poster/loop, e.g. "50% 60%". Default centre.
 			focus: z.string().optional(),
-			// Orientation of `media` on the project page; detected from the video's metadata when unset.
-			orientation: orientation.optional(),
 			// Project page video carousel (replaces the hero loop). The first poster is also the card thumbnail.
 			videos: z
 				.array(
@@ -36,7 +33,6 @@ const projects = defineCollection({
 						title: z.string(),
 						text: z.string(),
 						speed: z.string().optional(),
-						orientation: orientation.optional(),
 					}),
 				)
 				.default([]),

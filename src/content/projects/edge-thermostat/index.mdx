@@ -35,11 +35,6 @@ The thermostat has three modes:
 - **Auto**: a trained neural network runs on the ESP32 (TensorFlow Lite)
   and predicts the setpoint the user would choose.
 
-The model updates itself in a closed loop: the ESP32 sends new setpoint
-data to a server, the server fine-tunes the network on it, and the
-updated model is pushed back to the microcontroller, so Auto mode gets
-better the longer the device is used.
-
 ## My contribution
 
 Trained and compared regression and neural network models, selected the

@@ -17,9 +17,9 @@ interface Props {
 // One slide at a time on a fixed-height stage (the page never jumps between slides):
 // a video or an image, shown whole and centred, with a blurred, darkened copy of its
 // poster filling the rest. Only the active video loads and plays. ← / → sit on the
-// stage edges; below it the title and the 01 / 03 counter share a row, the description
-// under them. A single loop without text has no controls or caption. Styles live in
-// global.css (.carousel).
+// stage edges; below it one caption line (the text, else the title; the title is also
+// the media's aria-label) shares a row with the 01 / 03 counter. A single loop without
+// text has no controls or caption. Styles live in global.css (.carousel).
 const { items } = Astro.props;
 const pad = (n: number) => String(n).padStart(2, '0');
 const posters = items.map((item) => resolveHref(item.poster));
@@ -57,10 +57,7 @@ const fill = (i: number) => `--poster: url('${posters[i]}')`;
 		<div class="carousel-meta">
 			<div class="carousel-caption" aria-live="polite">
 				{items.map((item, i) => (
-					<div class:list={['carousel-text', i === 0 && 'is-active']} data-caption>
-						<p class="font-mono text-sm">{item.title}</p>
-						{item.text && <p class="mt-3 max-w-text text-muted">{item.text}</p>}
-					</div>
+					<p class:list={['carousel-text max-w-text text-muted', i === 0 && 'is-active']} data-caption>{item.text || item.title}</p>
 				))}
 			</div>
 			{!single && <p class="carousel-counter meta"><span data-index>01</span> / {pad(items.length)}</p>}

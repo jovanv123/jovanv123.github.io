@@ -79,17 +79,24 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 				{projects.map(({ data }, i) => (
 					<li class="min-w-0">
 						<a href={`/projects/${data.slug}`} class="group flex h-full flex-col border border-border bg-background text-text no-underline hover:border-accent-hover hover:text-text focus-visible:border-accent">
-							{data.media ? (
-								<VideoLoop src={data.media} poster={thumbs[i]} autoplay={false} preload="none" class="aspect-4/5 w-full border-b border-border bg-surface object-cover" style={data.focus && { objectPosition: data.focus }} data-thumb aria-hidden="true" />
-							) : data.cover && (
-								<Image src={data.cover.src} alt="" widths={[360, 720]} sizes="(min-width: 768px) 33vw, 100vw" class="aspect-4/5 w-full border-b border-border object-cover" style={data.focus && { objectPosition: data.focus }} />
+							{(data.media || data.cover) && (
+								<div class="relative border-b border-border">
+									{data.media ? (
+										<VideoLoop src={data.media} poster={thumbs[i]} autoplay={false} preload="none" class="aspect-4/3 w-full bg-surface object-cover" style={data.focus && { objectPosition: data.focus }} data-thumb aria-hidden="true" />
+									) : data.cover && (
+										<Image src={data.cover.src} alt="" widths={[360, 720]} sizes="(min-width: 768px) 33vw, 100vw" class="aspect-4/3 w-full object-cover" style={data.focus && { objectPosition: data.focus }} />
+									)}
+									{/* Hover label over the media, so it reserves no height. */}
+									<span class="absolute bottom-3 left-3 bg-inverse/60 px-2 py-1 font-mono text-xs text-inverse-text opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">View case study →</span>
+								</div>
 							)}
-							<div class="flex flex-1 flex-col gap-2 p-5">
-								<h3 class="text-xl tracking-tight group-hover:text-accent-hover group-focus-visible:text-accent">{data.title}</h3>
+							<div class="flex flex-1 flex-col gap-1.5 p-5">
+								<h3 class="text-xl leading-snug tracking-tight group-hover:text-accent-hover group-focus-visible:text-accent">{data.title}</h3>
 								<p class="font-mono text-xs text-muted">{data.context}</p>
-								<p class="mt-auto pt-4 font-mono text-xs text-accent-hover opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">View case study →</p>
-								<p class="border-t border-border pt-3 font-mono text-xs">
-									{data.result && <>{data.result} <span class="text-muted">·</span> </>}{data.year}
+								{/* result · year on one line, aligned across cards; the result truncates on mobile only. */}
+								<p class="mt-auto flex gap-1.5 border-t border-border pt-3 font-mono text-xs whitespace-nowrap max-md:mt-3">
+									{data.result && <><span class="max-md:truncate">{data.result}</span><span class="text-muted">·</span></>}
+									<span>{data.year}</span>
 								</p>
 							</div>
 						</a>

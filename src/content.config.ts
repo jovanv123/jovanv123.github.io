@@ -22,7 +22,7 @@ const projects = defineCollection({
 			// Video loop in public/, e.g. "media/<slug>.mp4": the card's hover preview, and the
 			// project page hero when there are no `slides`. Poster is the .jpg next to it.
 			media: z.string().optional(),
-			// object-position for the card's 4:5 crop of the poster/loop, e.g. "50% 60%". Default centre.
+			// object-position for the card's 4:3 crop of the poster/loop, e.g. "50% 60%". Default centre.
 			focus: z.string().optional(),
 			// Project page media carousel, in order. Video slides are files in public/ (poster: the
 			// .jpg next to it, else the cover); image slides are relative to index.mdx, e.g. "./robot.jpg".

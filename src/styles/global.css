@@ -276,7 +276,7 @@
 			@apply mt-4;
 		}
 
-		& ul:not(.cs-stats) {
+		& ul:not(.cs-stats, .cs-terms) {
 			@apply list-disc pl-5;
 		}
 
@@ -294,6 +294,27 @@
 
 		& a {
 			@apply text-accent decoration-accent/40 hover:text-accent-hover;
+		}
+	}
+
+	/* Term lists ("**Name**: description" items): a row of columns, hairline dividers between; stacked on mobile. */
+	.cs-terms {
+		@apply grid grid-cols-1 divide-y divide-border md:grid-flow-col md:auto-cols-fr md:divide-x md:divide-y-0;
+	}
+
+	.cs-body .cs-terms > li {
+		@apply mt-0 py-3 first:pt-0 last:pb-0 md:px-5 md:py-0 md:first:pl-0 md:last:pr-0;
+	}
+
+	.cs-term {
+		@apply block font-mono text-sm text-accent;
+	}
+
+	.cs-def {
+		@apply mt-1 block text-base leading-snug;
+
+		&::first-letter {
+			@apply uppercase;
 		}
 	}
 

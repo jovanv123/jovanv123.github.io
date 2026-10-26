@@ -119,7 +119,7 @@ projects:
       year: 2026
       result: ""                                  # TODO: placement if relevant
       summary: "Software lead for two mirrored differential-drive robots. STM32H7 low-level control in C — 1 kHz PID and odometry, trapezoidal velocity profiles, concurrent FSMs — with a Raspberry Pi 5 strategy and ArUco vision layer over UART. Previous season: trained the game-element recognition model for dynamic strategy."
-      media: "media/eurobot/movement2.mp4"
+      media: "media/eurobot/eurobot.mp4"
       tags: ["STM32H7", "C", "Raspberry Pi", "OpenCV", "FSM"]
       repo_url: ""
       featured: true
@@ -129,7 +129,7 @@ projects:
       year: 2025
       result: ""
       summary: "Trained and compared regression and neural network models predicting room setpoint temperature from user input data; deployed the best model on an ESP32 with TensorFlow Lite."
-      media: ""
+      media: "media/edge-thermostat/thermostat-demo.mp4"
       tags: ["TensorFlow Lite", "ESP32", "Python"]
       repo_url: ""
       featured: false

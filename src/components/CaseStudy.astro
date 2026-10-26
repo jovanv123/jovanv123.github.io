@@ -9,6 +9,7 @@ interface Props {
 // <section class="cs-section"><div class="cs-head">01 + h2</div><div class="cs-body">…</div></section>
 // (the number is a CSS counter shared with the page's Gallery and Links). Paragraphs,
 // list items and headings starting with "TODO" are dropped, and so are sections left empty.
+// Lists where every item is "**Name**: description" render as a row of terms (.cs-terms).
 // Done on the HTML because the Markdown processor (satteri) runs no rehype plugins.
 const { stats } = Astro.props;
 
@@ -25,7 +26,14 @@ const raw = (await Astro.slots.render('default'))
 	// TODO lines: whole paragraphs, list items and headings whose text starts with "TODO".
 	.replace(/<(p|li|h[1-6])\b[^>]*>\s*TODO[\s\S]*?<\/\1>/g, '')
 	// Lists whose items were all TODOs.
-	.replace(/<(ul|ol)\b[^>]*>\s*<\/\1>/g, '');
+	.replace(/<(ul|ol)\b[^>]*>\s*<\/\1>/g, '')
+	// Term lists (every item "**Name**: description") become a row of terms.
+	.replace(/<ul>((?:\s*<li><strong>[^<]*<\/strong>:[\s\S]*?<\/li>)+)\s*<\/ul>/g, (_, items: string) =>
+		`<ul class="cs-terms">${items.replace(
+			/<li><strong>([^<]*)<\/strong>:\s*([\s\S]*?)<\/li>/g,
+			'<li><span class="cs-term">$1</span><span class="cs-def">$2</span></li>',
+		)}</ul>`,
+	);
 
 // Split before each h2 (a zero-width split at index 0 yields no empty first part, so cut the intro off first).
 const first = raw.search(/<h2\b/);

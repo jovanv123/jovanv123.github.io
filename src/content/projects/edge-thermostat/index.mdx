@@ -3,7 +3,14 @@ title: "Edge AI on Microcontrollers"
 slug: "edge-thermostat"
 context: "TinyML on ESP32 · RT-RK internship"
 year: 2025
-summary: "Trained and compared regression and neural network models predicting room setpoint temperature from user input data; deployed the best model on an ESP32 with TensorFlow Lite."
+summary: "A smart thermostat that learns its user’s preferences. A neural network runs directly on an ESP32 and keeps improving: new setpoint data is sent to a server, which fine-tunes the model and pushes the updated version back to the device."
+media: "media/edge-thermostat/thermostat-demo.mp4"   # home card hover preview
+slides:                                          # project page carousel, in order
+  - type: "video"
+    src: "media/edge-thermostat/thermostat-demo.mp4"
+    poster: "media/edge-thermostat/thermostat-demo.jpg"
+    title: "Smart thermostat demo"
+    text: "The thermostat switching between modes, with the on-device model setting the temperature in Auto."
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
@@ -14,16 +21,26 @@ featured: false
 
 ## Problem
 
-TODO
+People adjust their thermostat by hand all day. The goal was a device that
+learns those preferences and sets the temperature itself, running on a
+low-cost microcontroller without a constant cloud connection.
 
 ## Architecture
 
-TODO
+The thermostat has three modes:
+
+- **Away**: holds an energy-saving setpoint while nobody is home.
+- **Manual**: the user sets the temperature directly. Every manual
+  adjustment is logged as training data.
+- **Auto**: a trained neural network runs on the ESP32 (TensorFlow Lite)
+  and predicts the setpoint the user would choose.
+
+The model updates itself in a closed loop: the ESP32 sends new setpoint
+data to a server, the server fine-tunes the network on it, and the
+updated model is pushed back to the microcontroller, so Auto mode gets
+better the longer the device is used.
 
 ## My contribution
 
-TODO
-
-## Results
-
-TODO
+Trained and compared regression and neural network models, selected the
+best-performing one, and deployed it on the ESP32 with TensorFlow Lite.

@@ -91,10 +91,10 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 							)}
 							<div class="flex flex-1 flex-col gap-1.5 p-5">
 								<h3 class="text-xl leading-snug tracking-tight group-hover:text-accent-hover group-focus-visible:text-accent">{data.title}</h3>
-								{/* result · year on one line, aligned across cards; the result truncates on mobile only. */}
+								{/* result · year (or period) on one line, aligned across cards; the result truncates on mobile only. */}
 								<p class="mt-auto flex gap-1.5 border-t border-border pt-3 font-mono text-xs whitespace-nowrap max-md:mt-3">
 									{data.result && <><span class="max-md:truncate">{data.result}</span><span class="text-muted">·</span></>}
-									<span>{data.year}</span>
+									<span>{data.period ?? data.year}</span>
 								</p>
 							</div>
 						</a>

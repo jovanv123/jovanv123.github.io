@@ -3,8 +3,9 @@ title: "Autonomous Mobile Robots"
 slug: "eurobot"
 context: "Navigation, control & strategy · Eurobot competition"
 role: "Software lead"
-year: 2026
-result: "Published paper · own control stack"
+year: 2026   # sort key
+period: "2023 – present"
+result: ""
 summary: "Three seasons building autonomous competition robots. For Eurobot 2025 I developed the vision system, training a YOLOv11 detector largely on synthetic images rendered in Unreal Engine 5, work that became a published paper. For 2026 I wrote the robots’ complete low-level control stack from scratch on an STM32H7 and tied it to a ROS 2 high-level layer for perception and strategy."
 media: "media/eurobot/eurobot.mp4"   # home card hover preview
 focus: "50% 55%"   # card crop (object-position)
@@ -30,6 +31,16 @@ slides:                                          # project page carousel, in ord
     alt: "The same rendered scene from another camera pose with detections"
     title: "Domain randomization"
     text: "Same scene from another camera pose. Every render exports its labels automatically."
+  - type: "image"
+    src: "./synthetic-detections-3.png"
+    alt: "Rendered Eurobot field from a high corner view with YOLOv11 stack detections"
+    title: "Randomized scene layout"
+    text: "New object layout and a high corner view. The detector finds every stack."
+  - type: "image"
+    src: "./synthetic-detections-4.png"
+    alt: "Rendered Eurobot field from the opposite side with YOLOv11 detections"
+    title: "Opposite side of the field"
+    text: "The far side of the field, with stacks at varied poses and distances."
   - type: "image"
     src: "./me_working.jpg"
     alt: "Jovan Vasić working on the robot"

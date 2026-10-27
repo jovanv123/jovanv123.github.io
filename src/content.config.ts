@@ -13,7 +13,9 @@ const projects = defineCollection({
 			slug: z.string(),
 			context: z.string(),
 			role: z.string().optional(),
+			// Sort key; `period` (e.g. "2023 – present"), if set, is shown instead.
 			year: z.number().int(),
+			period: z.string().optional(),
 			// Short result for the card footer; result_detail (if set) replaces it on the project page.
 			result: z.string().optional(),
 			result_detail: z.string().optional(),

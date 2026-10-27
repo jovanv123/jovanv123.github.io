@@ -49,8 +49,7 @@ field.
 ## Low-level control stack · 2026
 
 I wrote the entire embedded stack from scratch in C on an STM32H7, with no
-vendor motion libraries: a 1 kHz control loop for PID and encoder
-odometry, trapezoidal velocity profiles, drivers for servos, steppers and
+vendor motion libraries: PID control with encoder odometry, trapezoidal velocity profiles, drivers for servos, steppers and
 sensors, and concurrent state machines that run navigation and mechanisms
 in parallel. It connects over UART to a ROS 2 high-level layer on a
 Raspberry Pi 5, which handles ArUco-based perception and match strategy.
@@ -62,10 +61,8 @@ photorealistic Eurobot field in Unreal Engine 5 that procedurally
 randomizes object poses, lighting, camera position and materials, and
 exports every render with YOLO labels. Moving from pure synthetic data to
 a hybrid set (~780 synthetic + ~150 real images) closed most of the
-sim-to-real gap. On a real-world test set the YOLOv11 detector reached
-98.9% precision, 81.0% recall and an F1 of 89.1% at about 15 fps,
-served to the robot over Wi-Fi as a live map of which game elements were
-still available.
+sim-to-real gap. The YOLOv11 detector was served to the robot over Wi-Fi
+as a live map of which game elements were still available.
 
 ## The 2025 robot
 
@@ -78,7 +75,14 @@ still available.
 
 ## My contribution
 
-Software lead. I built the low-level control stack and its integration
-with the high-level perception layer (2026), and the synthetic-data
-vision pipeline and detector (2025). In my first season I worked on
-mechanical assembly.
+Software lead.
+
+- **2026**: The low-level control stack and its integration with the high-level perception layer.
+- **2025**: The synthetic-data vision pipeline and detector.
+- **2024**: Volunteer, mechanical assembly.
+
+## Results
+
+- **2024**: 5th in Europe.
+- **2025**: Did not qualify.
+- **2026**: 5th in Serbia.

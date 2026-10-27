@@ -26,17 +26,49 @@ slides:                                          # project page carousel, in ord
     alt: "Jovan Vasić working on the robot"
     title: "Working on the robot"
     text: ""
+  - type: "image"
+    src: "./drive-base.jpg"
+    alt: "CAD render of the differential drive base with belt-reduced Maxon motors"
+    title: "Drive base"
+    text: "Differential drive with belt-reduced Maxon motors"
+  - type: "image"
+    src: "./odometry-wheel.jpg"
+    alt: "CAD render of the passive encoder wheel"
+    title: "Odometry wheel"
+    text: "Passive encoder wheel for slip-free odometry"
+  - type: "image"
+    src: "./sima-robot.jpg"
+    alt: "CAD render of SIMA, the small show robot"
+    title: "SIMA"
+    text: "SIMA, the small show robot"
+  - type: "image"
+    src: "./field-2025.jpg"
+    alt: "Eurobot 2025 field layout"
+    title: "Eurobot 2025 field"
+    text: "Eurobot 2025 field layout"
+seasons:                                         # "Seasons" carousel, newest first
+  - season: "Eurobot 2026"
+    result: "5th"
+    result_label: "in Serbia"
+    role: "Software lead · low-level control"
+    text: "Wrote the robots' entire low-level control stack from scratch in C on an STM32H7: a 1 kHz loop for PID and odometry, trapezoidal motion profiles, actuator drivers and concurrent state machines. Integrated it over UART with a ROS 2 high-level layer on a Raspberry Pi 5 for ArUco-based perception and strategy."
+  - season: "Eurobot 2025"
+    result: "DNQ"
+    result_label: "did not qualify"
+    role: "Computer vision · published paper"
+    text: "Built a photorealistic Eurobot field in Unreal Engine 5 to generate randomized, auto-labelled training data, and trained a YOLOv11 detector on a hybrid synthetic + real set: 98.9% precision and 89.1% F1 on a real-world test set at ~15 fps. Published as a paper."
+    image: "./synthetic-detections-1.png"
+    image_alt: "Synthetic Eurobot field render with YOLO detections"
+  - season: "Eurobot 2024"
+    result: "5th"
+    result_label: "in Europe"
+    role: "Team member · mechanical assembly"
+    text: "First season on the team: assembling the robot's mechanics and learning the full competition workflow from design to match day."
 tags: ["C", "STM32H7", "ROS 2", "Raspberry Pi", "Unreal Engine 5", "YOLOv11", "Python"]
 # repo_url:
 # paper_url:
 featured: true
 ---
-
-import FigureCarousel from '../../../components/FigureCarousel.astro';
-import driveBase from './drive-base.jpg';
-import odometryWheel from './odometry-wheel.jpg';
-import simaRobot from './sima-robot.jpg';
-import field2025 from './field-2025.jpg';
 
 ## Problem
 
@@ -45,44 +77,3 @@ Eurobot is an autonomous robotics competition: robots score points on a
 opponent moving on the same table. That demands reliable motion, safe
 obstacle handling and a strategy that adapts to what is actually on the
 field.
-
-## Low-level control stack · 2026
-
-I wrote the entire embedded stack from scratch in C on an STM32H7, with no
-vendor motion libraries: PID control with encoder odometry, trapezoidal velocity profiles, drivers for servos, steppers and
-sensors, and concurrent state machines that run navigation and mechanisms
-in parallel. It connects over UART to a ROS 2 high-level layer on a
-Raspberry Pi 5, which handles ArUco-based perception and match strategy.
-
-## Vision from synthetic data · 2025 (published)
-
-Labelled real images of the field were scarce, so we built a
-photorealistic Eurobot field in Unreal Engine 5 that procedurally
-randomizes object poses, lighting, camera position and materials, and
-exports every render with YOLO labels. Moving from pure synthetic data to
-a hybrid set (~780 synthetic + ~150 real images) closed most of the
-sim-to-real gap. The YOLOv11 detector was served to the robot over Wi-Fi
-as a live map of which game elements were still available.
-
-## The 2025 robot
-
-<FigureCarousel figures={[
-	{ src: driveBase, caption: 'Differential drive with belt-reduced Maxon motors' },
-	{ src: odometryWheel, caption: 'Passive encoder wheel for slip-free odometry' },
-	{ src: simaRobot, caption: 'SIMA, the small show robot' },
-	{ src: field2025, caption: 'Eurobot 2025 field layout' },
-]} />
-
-## My contribution
-
-Software lead.
-
-- **2026**: The low-level control stack and its integration with the high-level perception layer.
-- **2025**: The synthetic-data vision pipeline and detector.
-- **2024**: Volunteer, mechanical assembly.
-
-## Results
-
-- **2024**: 5th in Europe.
-- **2025**: Did not qualify.
-- **2026**: 5th in Serbia.

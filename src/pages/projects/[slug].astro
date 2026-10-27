@@ -4,6 +4,7 @@ import { getImage, Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MediaCarousel, { type Slide } from '../../components/MediaCarousel.astro';
 import CaseStudy from '../../components/CaseStudy.astro';
+import SeasonCarousel from '../../components/SeasonCarousel.astro';
 import { coverUrl, getProjects, videoPoster } from '../../lib/projects';
 
 export async function getStaticPaths() {
@@ -75,6 +76,13 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 		<p class="summary mt-8 md:mt-12">{data.summary}</p>
 
 		<CaseStudy stats={data.stats}><Content /></CaseStudy>
+
+		{data.seasons.length > 0 && (
+			<section class="cs-section cs-section-wide" aria-labelledby="seasons-heading">
+				<div class="cs-head"><span class="cs-num"></span><h2 id="seasons-heading">Seasons</h2></div>
+				<div class="cs-body"><SeasonCarousel items={data.seasons} /></div>
+			</section>
+		)}
 
 		{data.gallery.length > 0 && (
 			<section class="cs-section cs-section-wide" aria-labelledby="gallery-heading">

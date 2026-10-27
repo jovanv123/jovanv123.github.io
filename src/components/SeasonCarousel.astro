@@ -1,0 +1,80 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+export type Season = {
+	season: string;
+	result: string;
+	result_label: string;
+	role: string;
+	text: string;
+	image?: ImageMetadata;
+	image_alt?: string;
+};
+
+interface Props {
+	/** Frontmatter `seasons`, newest first. */
+	items: Season[];
+}
+
+// Text-only counterpart of MediaCarousel (same arrows, counter, keys, swipe and 150 ms
+// crossfade, via lib/carousel). Slides share one grid cell, so the carousel keeps the
+// height of the tallest slide and the page never jumps. Per slide: the result as a
+// large accent value over its label and the season (left), then the mono role line,
+// a paragraph and an optional small figure (right); stacked on mobile.
+// Styles live in global.css (.seasons).
+const { items } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, '0');
+const single = items.length === 1;
+---
+
+<div class="seasons" data-seasons tabindex={single ? undefined : 0} aria-roledescription={single ? undefined : 'carousel'} aria-label="Seasons">
+	<div class="season-track" aria-live="polite" data-track>
+		{items.map((item, i) => (
+			<article class:list={['season', i === 0 && 'is-active']} aria-label={item.season} aria-hidden={i > 0 ? 'true' : undefined} inert={i > 0} data-season>
+				<div>
+					<p class="season-result">{item.result}</p>
+					<p class="season-label">{item.result_label}</p>
+					<p class="season-name">{item.season}</p>
+				</div>
+				<div class="season-body">
+					<p class="season-role">{item.role}</p>
+					<p class="season-text">{item.text}</p>
+					{item.image && (
+						<figure class="season-figure">
+							<Image src={item.image} alt={item.image_alt ?? ''} widths={[400, 800]} sizes="400px" />
+						</figure>
+					)}
+				</div>
+			</article>
+		))}
+	</div>
+	{!single && (
+		<div class="season-controls">
+			<p class="carousel-counter meta"><span data-index>01</span> / {pad(items.length)}</p>
+			<div class="flex gap-2">
+				<button type="button" class="carousel-button season-button" aria-label="Previous season" data-prev>←</button>
+				<button type="button" class="carousel-button season-button" aria-label="Next season" data-next>→</button>
+			</div>
+		</div>
+	)}
+</div>
+
+<script>
+	import { initCarousel } from '../lib/carousel';
+
+	for (const root of document.querySelectorAll<HTMLElement>('[data-seasons]')) {
+		const slides = [...root.querySelectorAll<HTMLElement>('[data-season]')];
+		if (slides.length < 2) continue;
+
+		initCarousel(root, slides.length, root.querySelector<HTMLElement>('[data-track]')!, (current) => {
+			slides.forEach((slide, i) => {
+				const active = i === current;
+				slide.classList.toggle('is-active', active);
+				slide.inert = !active;
+				if (active) slide.removeAttribute('aria-hidden');
+				else slide.setAttribute('aria-hidden', 'true');
+			});
+		});
+	}
+</script>

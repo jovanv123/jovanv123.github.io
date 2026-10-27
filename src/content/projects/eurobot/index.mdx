@@ -22,47 +22,19 @@ slides:                                          # project page carousel, in ord
     title: "The 2026 robot"
     text: ""
   - type: "image"
-    src: "./synthetic-detections-1.png"
-    alt: "Rendered Eurobot field in Unreal Engine 5 with YOLOv11 detection boxes"
-    title: "Synthetic training data · Unreal Engine 5"
-    text: "Rendered Eurobot field with randomized object poses, lighting and camera, and the YOLOv11 detections."
-  - type: "image"
-    src: "./synthetic-detections-2.png"
-    alt: "The same rendered scene from another camera pose with detections"
-    title: "Domain randomization"
-    text: "Same scene from another camera pose. Every render exports its labels automatically."
-  - type: "image"
-    src: "./synthetic-detections-3.png"
-    alt: "Rendered Eurobot field from a high corner view with YOLOv11 stack detections"
-    title: "Randomized scene layout"
-    text: "New object layout and a high corner view. The detector finds every stack."
-  - type: "image"
-    src: "./synthetic-detections-4.png"
-    alt: "Rendered Eurobot field from the opposite side with YOLOv11 detections"
-    title: "Opposite side of the field"
-    text: "The far side of the field, with stacks at varied poses and distances."
-  - type: "image"
     src: "./me_working.jpg"
     alt: "Jovan Vasić working on the robot"
     title: "Working on the robot"
     text: ""
-stats:
-  - { value: "98.9%", label: "detection precision, real-world test set" }
-  - { value: "1 kHz", label: "control loop, written from scratch" }
-  - { value: "3", label: "competition seasons" }
 tags: ["C", "STM32H7", "ROS 2", "Raspberry Pi", "Unreal Engine 5", "YOLOv11", "Python"]
 # repo_url:
 # paper_url:
 featured: true
 ---
 
-import FigureGrid from '../../../components/FigureGrid.astro';
+import FigureCarousel from '../../../components/FigureCarousel.astro';
 import driveBase from './drive-base.jpg';
 import odometryWheel from './odometry-wheel.jpg';
-import canGrippers from './can-grippers.jpg';
-import plankRack from './plank-rack.png';
-import bannerMechanism from './banner-mechanism.jpg';
-import stmPcb from './stm-pcb.jpg';
 import simaRobot from './sima-robot.jpg';
 import field2025 from './field-2025.jpg';
 
@@ -97,13 +69,9 @@ still available.
 
 ## The 2025 robot
 
-<FigureGrid figures={[
+<FigureCarousel figures={[
 	{ src: driveBase, caption: 'Differential drive with belt-reduced Maxon motors' },
 	{ src: odometryWheel, caption: 'Passive encoder wheel for slip-free odometry' },
-	{ src: canGrippers, caption: 'Electromagnetic can grippers on a leadscrew lift' },
-	{ src: plankRack, caption: 'Servo rack-and-pinion mechanism for the planks' },
-	{ src: bannerMechanism, caption: 'Passive spring-loaded banner deployment' },
-	{ src: stmPcb, caption: 'Custom STM32 control board' },
 	{ src: simaRobot, caption: 'SIMA, the small show robot' },
 	{ src: field2025, caption: 'Eurobot 2025 field layout' },
 ]} />
@@ -114,5 +82,3 @@ Software lead. I built the low-level control stack and its integration
 with the high-level perception layer (2026), and the synthetic-data
 vision pipeline and detector (2025). In my first season I worked on
 mechanical assembly.
-
-## Results

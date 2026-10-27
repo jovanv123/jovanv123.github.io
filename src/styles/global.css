@@ -339,26 +339,9 @@
 		@apply meta mt-2 normal-case;
 	}
 
-	/* Figure grid (FigureGrid in the MDX body): 3 / 2 / 1 per row, hairline borders, images whole in a 4:3 frame.
-	   Its section's body takes the full column instead of the text width. */
-	.cs-body:has(.fig-grid) {
+	/* A carousel in the MDX body (FigureCarousel) takes the full column instead of the text width. */
+	.cs-body:has(.carousel) {
 		@apply max-w-none;
-	}
-
-	.fig-grid {
-		@apply mt-0 grid grid-cols-1 border-t border-l border-border sm:grid-cols-2 lg:grid-cols-3;
-	}
-
-	.fig-grid-item {
-		@apply flex flex-col border-r border-b border-border bg-background p-4;
-	}
-
-	.fig-grid-image {
-		@apply aspect-4/3 w-full bg-background object-contain;
-	}
-
-	.cs-body .fig-grid-caption {
-		@apply meta mt-3 normal-case leading-snug;
 	}
 
 	/* Next project: one hairline row, label left, title right. */

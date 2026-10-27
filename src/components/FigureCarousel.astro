@@ -1,0 +1,25 @@
+---
+import type { ImageMetadata } from 'astro';
+import { getImage } from 'astro:assets';
+import MediaCarousel, { type Slide } from './MediaCarousel.astro';
+
+interface Props {
+	/** Colocated images imported in the MDX; the caption is the slide's caption and, unless `alt` is set, its alt text. */
+	figures: { src: ImageMetadata; caption: string; alt?: string }[];
+}
+
+// A MediaCarousel of figures inside a case-study section (each image is its own blurred backdrop).
+const { figures } = Astro.props;
+const slides: Slide[] = await Promise.all(
+	figures.map(async (figure) => ({
+		type: 'image' as const,
+		src: figure.src,
+		alt: figure.alt ?? figure.caption,
+		title: figure.caption,
+		text: figure.caption,
+		poster: (await getImage({ src: figure.src, width: 640, format: 'jpg' })).src,
+	})),
+);
+---
+
+<MediaCarousel items={slides} />

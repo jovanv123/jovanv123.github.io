@@ -47,8 +47,6 @@
 	--text-stat: 2.5rem;
 	--text-stat--line-height: 1;
 	--grid-template-columns-case: 12.5rem 1fr;
-	/* Season slide figure width. */
-	--container-season-figure: 18rem;
 	--text-title: clamp(2.25rem, 4vw, 3.25rem);
 	--text-title--line-height: 1.05;
 	/* Project video stage height (mobile / from md). */
@@ -489,16 +487,8 @@
 		@apply mt-3 text-case;
 	}
 
-	.season-figure {
-		@apply mt-6 max-w-season-figure border border-border;
-
-		& img {
-			@apply block h-auto w-full;
-		}
-	}
-
 	.season-controls {
-		@apply mt-8 flex items-center justify-between gap-6 border-t border-border pt-4;
+		@apply mt-6 flex items-center justify-between gap-6 border-t border-border pt-3;
 	}
 
 	.seasons:hover .carousel-counter {
@@ -507,7 +497,7 @@
 
 	/* The shared arrow squares, in the controls row instead of over a stage. */
 	.season-button {
-		@apply static translate-y-0;
+		@apply static size-8 translate-y-0;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

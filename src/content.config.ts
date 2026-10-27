@@ -51,7 +51,7 @@ const projects = defineCollection({
 				)
 				.default([]),
 			gallery: z.array(figure).default([]),
-			// Project page "Seasons" carousel (SeasonCarousel), newest first; image relative to index.mdx.
+			// Project page "Seasons" carousel (SeasonCarousel), newest first.
 			seasons: z
 				.array(
 					z.object({
@@ -60,8 +60,6 @@ const projects = defineCollection({
 						result_label: z.string(),
 						role: z.string(),
 						text: z.string(),
-						image: image().optional(),
-						image_alt: z.string().optional(),
 					}),
 				)
 				.default([]),

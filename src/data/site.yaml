@@ -80,7 +80,7 @@ profile:
   photo: "me-color.jpg"           # in src/assets/, square crop; a framed placeholder shows until it exists
   email: ""                       # TODO
   cv: "assets/cv.pdf"
-  status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot
+  status: "MSc MRBE @ TUM · open to internships & Werkstudent positions"   # mono line with accent dot
 
 # Page copy draft from portfolio.md — not rendered yet (not in the home section order).
 about:
@@ -119,7 +119,8 @@ experience:
       start: "2023-09"
       end: "present"
       points:
-        - "Development of autonomous mobile robots. From mechanical design to software architecture and control."
+        - "Wrote the robots’ low-level control stack from scratch (STM32H7, C) and integrated it with a ROS 2 perception layer."
+        - "Built a synthetic-data vision pipeline in Unreal Engine 5 for YOLOv11 detection (published paper)."
     - role: "Embedded Software Intern (Edge AI)"
       company: "RT-RK"
       company_url: ""

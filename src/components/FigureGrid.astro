@@ -1,0 +1,22 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+	/** Colocated images imported in the MDX; the caption doubles as alt text unless `alt` is set. */
+	figures: { src: ImageMetadata; caption: string; alt?: string }[];
+}
+
+// Numbered figures for a case-study section: 3 / 2 / 1 per row (desktop / tablet / mobile),
+// each image shown whole in a fixed 4:3 white frame. Styles live in global.css (.fig-grid).
+const { figures } = Astro.props;
+---
+
+<div class="fig-grid">
+	{figures.map((figure, i) => (
+		<figure class="fig-grid-item">
+			<Image src={figure.src} alt={figure.alt ?? figure.caption} widths={[360, 720]} sizes="(min-width: 1024px) 300px, (min-width: 640px) 50vw, 100vw" class="fig-grid-image" />
+			<figcaption class="fig-grid-caption"><span class="text-text">{String(i + 1).padStart(2, '0')}</span> {figure.caption}</figcaption>
+		</figure>
+	))}
+</div>

@@ -1,0 +1,19 @@
+---
+import { renderFlowchart } from '../lib/flowchart';
+
+interface Props {
+	/** Mermaid `flowchart LR` source; `==>` edges are the key path (accent). */
+	code: string;
+}
+
+// Static SVG diagram rendered at build time. Scales down to the column on desktop
+// (max ~320px tall); on mobile it keeps its natural width and scrolls inside the frame.
+const { code } = Astro.props;
+let hash = 0;
+for (const ch of code) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+const { svg, width } = renderFlowchart(code, `fc${(hash >>> 0).toString(36)}`);
+---
+
+<figure class="diagram" style={`--diagram-width: ${width}px`}>
+	<Fragment set:html={svg} />
+</figure>

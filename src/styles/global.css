@@ -49,6 +49,8 @@
 	--grid-template-columns-case: 12.5rem 1fr;
 	--text-title: clamp(2.25rem, 4vw, 3.25rem);
 	--text-title--line-height: 1.05;
+	/* Flowchart diagrams: max height. */
+	--max-height-diagram: 20rem;
 	/* Project video stage height (mobile / from md). */
 	--stage-height: 60vh;
 	--stage-height-md: min(70vh, 600px);
@@ -337,6 +339,93 @@
 
 	.cs-body .cs-stat-label {
 		@apply meta mt-2 normal-case;
+	}
+
+	/* Flowchart diagrams (Flowchart, rendered at build time): 1px near-black strokes, white nodes,
+	   accent key path, mono labels. Scales to the column (max ~320px tall) from md; on mobile it keeps
+	   its natural width and scrolls inside the frame. The section body takes the full column. */
+	.cs-body:has(.diagram) {
+		@apply max-w-none;
+
+		& > :not(.diagram) {
+			@apply max-w-text;
+		}
+	}
+
+	.diagram {
+		@apply mt-6 overflow-x-auto;
+
+		& svg {
+			@apply block h-auto max-h-diagram w-full max-w-(--diagram-width) max-md:w-(--diagram-width) max-md:max-w-none;
+		}
+
+		& text {
+			font-family: var(--font-mono);
+			font-size: 11px;
+			text-anchor: middle;
+			dominant-baseline: central;
+			fill: var(--color-text);
+		}
+	}
+
+	.diagram-node rect {
+		fill: var(--color-background);
+		stroke: var(--color-text);
+		stroke-width: 1;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.diagram-node.is-key rect {
+		stroke: var(--color-accent);
+	}
+
+	.diagram-edge {
+		fill: none;
+		stroke: var(--color-text);
+		stroke-width: 1;
+		vector-effect: non-scaling-stroke;
+
+		&.is-key {
+			stroke: var(--color-accent);
+		}
+	}
+
+	.diagram-arrow path {
+		fill: var(--color-text);
+	}
+
+	.diagram-arrow.is-key path {
+		fill: var(--color-accent);
+	}
+
+	.diagram .diagram-label {
+		fill: var(--color-muted);
+	}
+
+	.diagram-label-bg {
+		fill: var(--color-background);
+	}
+
+	/* Results comparison table: hairlines, mono header row and row labels. */
+	.cs-table {
+		@apply mb-6 w-full border-collapse text-sm;
+
+		& th,
+		& td {
+			@apply border border-border px-3 py-2 text-left align-top;
+		}
+
+		& thead th {
+			@apply font-mono text-xs font-normal text-muted;
+		}
+
+		& tbody th {
+			@apply font-normal;
+		}
+
+		& td {
+			@apply font-mono;
+		}
 	}
 
 	/* Next project: one hairline row, label left, title right. */

@@ -11,8 +11,8 @@ site:
   description: "Mechatronics engineer working on robot perception, manipulation and embedded control. MSc MRBE at TUM."
   url: ""                         # TODO: https://jovanvasic.dev or similar
   language: "en"
-  favicon: "assets/favicon.svg"
-  og_image: "assets/og-image.png" # 1200x630
+  favicon: "favicon.svg"
+  og_image: ""                    # 1200x630 in public/, e.g. "assets/og-image.png"
 
 # ------------------------------------------------------------
 #  STYLING — mapped into Tailwind via src/lib/theme.ts + src/styles/global.css
@@ -121,19 +121,23 @@ experience:
       points:
         - "Wrote the robots’ low-level control stack from scratch (STM32H7, C) and integrated it with a ROS 2 perception layer."
         - "Built a synthetic-data vision pipeline in Unreal Engine 5 for YOLOv11 detection (published paper)."
+      tech: ["C", "STM32H7", "ROS 2", "Python", "YOLOv11", "Unreal Engine 5"]
     - role: "Embedded Software Intern (Edge AI)"
       company: "RT-RK"
       company_url: ""
       start: "2025-05"
       end: "2025-07"
       points:
-        - "Design and implementation of embedded software for edge AI applications."
+        - "Built an ESP32 smart thermostat running FreeRTOS, with Away, Manual and Auto modes."
+        - "Trained and compared regression and neural-network setpoint models; deployed the best on the device with TensorFlow Lite."
+      tech: ["C", "FreeRTOS", "ESP32", "TensorFlow Lite", "Python"]
     - role: "Computer Vision Intern"
       company: "DunavNET"
       company_url: ""
       start: "2024-08"
       end: "2024-10"
-      points: []
+      points: []                  # hidden until filled
+      tech: []
 
 education:
   heading: "Education"

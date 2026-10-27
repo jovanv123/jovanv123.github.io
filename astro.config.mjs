@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import icon from 'astro-icon';
+import checkOutput from './src/integrations/check-output.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -15,7 +16,8 @@ export default defineConfig({
   },
 
   // Icons: simple-icons (brands) and tabler (generic), inlined as SVG at build time.
-  integrations: [mdx(), sitemap(), icon()],
+  // checkOutput fails the build on broken internal links/assets or a rendered "TODO".
+  integrations: [mdx(), sitemap(), icon(), checkOutput()],
 
   // Families match `typography` in src/data/site.yaml. Downloaded at build time and self-hosted.
   fonts: [

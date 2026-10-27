@@ -1,7 +1,9 @@
 ---
 interface Props {
-	/** Frontmatter `stats`, shown at the top of the Results section. */
+	/** Frontmatter `stats`, shown at the top of the Results section (empty values hidden). */
 	stats: { value: string; label: string }[];
+	/** Frontmatter `comparison`, a table under the stats once any cell is filled. */
+	comparison?: { columns: string[]; rows: { label: string; values: string[] }[] };
 }
 
 // Shapes the rendered MDX body (the default slot) into numbered two-column sections:
@@ -11,7 +13,8 @@ interface Props {
 // list items and headings starting with "TODO" are dropped, and so are sections left empty.
 // Lists where every item is "**Name**: description" render as a row of terms (.cs-terms).
 // Done on the HTML because the Markdown processor (satteri) runs no rehype plugins.
-const { stats } = Astro.props;
+const { comparison } = Astro.props;
+const stats = Astro.props.stats.filter((s) => s.value.trim());
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const isEmpty = (html: string) => !html.replace(/<!--[\s\S]*?-->/g, '').trim();
@@ -20,6 +23,14 @@ const statsHtml = stats.length
 	? `<ul class="cs-stats">${stats
 			.map((s) => `<li class="cs-stat"><p class="cs-stat-value">${escape(s.value)}</p><p class="cs-stat-label">${escape(s.label)}</p></li>`)
 			.join('')}</ul>`
+	: '';
+
+const comparisonHtml = comparison?.rows.some((row) => row.values.some((value) => value.trim()))
+	? `<table class="cs-table"><thead><tr><th scope="col"></th>${comparison.columns
+			.map((column) => `<th scope="col">${escape(column)}</th>`)
+			.join('')}</tr></thead><tbody>${comparison.rows
+			.map((row) => `<tr><th scope="row">${escape(row.label)}</th>${row.values.map((value) => `<td>${escape(value) || '—'}</td>`).join('')}</tr>`)
+			.join('')}</tbody></table>`
 	: '';
 
 const raw = (await Astro.slots.render('default'))
@@ -46,7 +57,7 @@ const html =
 			const end = part.indexOf('</h2>') + '</h2>'.length;
 			const heading = part.slice(0, end);
 			const title = heading.replace(/<[^>]+>/g, '').trim().toLowerCase();
-			const body = (title === 'results' ? statsHtml : '') + part.slice(end);
+			const body = (title === 'results' ? statsHtml + comparisonHtml : '') + part.slice(end);
 			if (isEmpty(body)) return '';
 			return `<section class="cs-section"><div class="cs-head"><span class="cs-num"></span>${heading}</div><div class="cs-body">${body}</div></section>`;
 		})

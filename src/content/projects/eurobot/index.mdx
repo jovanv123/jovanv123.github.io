@@ -57,11 +57,14 @@ seasons:                                         # "Seasons" carousel, newest fi
     result_label: "in Europe"
     role: "Team member · mechanical assembly"
     text: "First season on the team: assembling the robot's mechanics and learning the full competition workflow from design to match day."
+publication: { title: "", venue: "IcETRAN", year: 2025, url: "" }   # line under the summary, shown once title is set
 tags: ["C", "STM32H7", "ROS 2", "Raspberry Pi", "Unreal Engine 5", "YOLOv11", "Python"]
 # repo_url:
 # paper_url:
 featured: true
 ---
+
+import Flowchart from '../../../components/Flowchart.astro';
 
 ## Problem
 
@@ -70,3 +73,17 @@ Eurobot is an autonomous robotics competition: robots score points on a
 opponent moving on the same table. That demands reliable motion, safe
 obstacle handling and a strategy that adapts to what is actually on the
 field.
+
+## Architecture
+
+Two-layer stack: real-time control written from scratch on the STM32H7, perception and strategy in ROS 2 on a Raspberry Pi 5.
+
+<Flowchart code={`
+flowchart LR
+  CAM[Camera] ==> ROS[Raspberry Pi 5 · ROS 2<br/>ArUco localization · strategy]
+  ROS == UART ==> FSM[STM32H7<br/>state machines]
+  FSM ==> CTRL[1 kHz PID · odometry<br/>motion profiles]
+  CTRL ==> MOT[Drive motors]
+  FSM --> ACT[Grippers · lifts · servos]
+  ENC[Encoders · sensors] --> CTRL
+`} />

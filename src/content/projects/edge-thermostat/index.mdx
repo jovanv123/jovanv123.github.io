@@ -15,10 +15,12 @@ slides:                                          # project page carousel, in ord
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
-tags: ["TensorFlow Lite", "ESP32", "Python"]
+tags: ["TensorFlow Lite", "ESP32", "FreeRTOS", "Python"]
 # repo_url:
 featured: false
 ---
+
+import Flowchart from '../../../components/Flowchart.astro';
 
 ## Problem
 
@@ -35,6 +37,14 @@ The thermostat has three modes:
   adjustment is logged as training data.
 - **Auto**: a trained neural network runs on the ESP32 (TensorFlow Lite)
   and predicts the setpoint the user would choose.
+
+<Flowchart code={`
+flowchart LR
+  USER[Manual setpoints] --> ESP[ESP32 · FreeRTOS<br/>TFLite inference]
+  ESP == setpoint data ==> SRV[Server<br/>fine-tuning]
+  SRV == updated model ==> ESP
+  ESP --> HVAC[Heating control]
+`} />
 
 ## My contribution
 

@@ -86,6 +86,7 @@ export const siteSchema = z.object({
 				start: z.string(),
 				end: z.string(),
 				points: z.array(z.string()),
+				tech: z.array(z.string()).default([]),
 			}),
 		),
 	}),
@@ -155,12 +156,14 @@ export function socialLinks(site: Site) {
 }
 
 /**
- * Makes site.yaml hrefs work from any route: "#id" → "/#id",
- * "assets/cv.pdf" → "/assets/cv.pdf". Absolute URLs and mailto: pass through.
+ * Makes site-relative hrefs work from any route under the configured base
+ * (import.meta.env.BASE_URL): "#id" → "<base>#id", "assets/cv.pdf" → "<base>assets/cv.pdf",
+ * "" → "<base>". Absolute URLs, mailto: and root-relative paths pass through.
  */
 export function resolveHref(href: string) {
 	if (/^([a-z]+:|\/)/i.test(href)) return href;
-	return `/${href}`;
+	const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+	return `${base}${href}`;
 }
 
 /** Posters sit next to their video: "media/x.mp4" → "media/x.jpg". */

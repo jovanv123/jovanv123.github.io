@@ -6,6 +6,7 @@ import MediaCarousel, { type Slide } from '../../components/MediaCarousel.astro'
 import CaseStudy from '../../components/CaseStudy.astro';
 import SeasonCarousel from '../../components/SeasonCarousel.astro';
 import { coverUrl, getProjects, videoPoster } from '../../lib/projects';
+import { resolveHref } from '../../lib/site';
 
 export async function getStaticPaths() {
 	const projects = await getProjects();
@@ -50,7 +51,7 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 		{/* Title and context left (~60%), Role and Result stacked right; below a hairline on mobile. */}
 		<header class="grid gap-8 md:grid-cols-5 md:gap-12">
 			<div class="md:col-span-3">
-				<p class="meta"><a href="/#projects" class="no-underline">← Work</a></p>
+				<p class="meta"><a href={resolveHref('#projects')} class="no-underline">← Work</a></p>
 				<h1 class="mt-3 text-title tracking-tighter">{data.title}</h1>
 				<p class="mt-3 font-mono text-sm text-muted">{data.context}</p>
 			</div>
@@ -75,7 +76,15 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 
 		<p class="summary mt-8 md:mt-12">{data.summary}</p>
 
-		<CaseStudy stats={data.stats}><Content /></CaseStudy>
+		{data.publication?.title && (
+			<p class="mt-6 flex max-w-text flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+				<span class="meta">Publication</span>
+				{data.publication.url ? <a href={data.publication.url} class="text-accent hover:text-accent-hover">{data.publication.title}</a> : <span>{data.publication.title}</span>}
+				<span class="font-mono text-xs text-muted">{data.publication.venue} · {data.publication.year}</span>
+			</p>
+		)}
+
+		<CaseStudy stats={data.stats} comparison={data.comparison}><Content /></CaseStudy>
 
 		{data.seasons.length > 0 && (
 			<section class="cs-section cs-section-wide" aria-labelledby="seasons-heading">
@@ -112,7 +121,7 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 		)}
 
 		<nav aria-label="Next project" class="next-project">
-			<a href={`/projects/${next.data.slug}`} class="group">
+			<a href={resolveHref(`projects/${next.data.slug}/`)} class="group">
 				<span class="meta">Next project →</span>
 				<span class="next-title">{next.data.title}<span class="next-arrow" aria-hidden="true">→</span></span>
 			</a>

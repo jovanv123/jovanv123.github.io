@@ -63,8 +63,24 @@ const projects = defineCollection({
 					}),
 				)
 				.default([]),
-			// Shown as large figures at the top of the Results section.
+			// Shown as large figures at the top of the Results section; entries with an empty value are hidden.
 			stats: z.array(z.object({ value: z.string(), label: z.string() })).default([]),
+			// Compact table under the stats, shown once any cell is filled.
+			comparison: z
+				.object({
+					columns: z.array(z.string()),
+					rows: z.array(z.object({ label: z.string(), values: z.array(z.string()) })),
+				})
+				.optional(),
+			// One line under the summary, shown once `title` is filled.
+			publication: z
+				.object({
+					title: z.string(),
+					venue: z.string(),
+					year: z.number().int(),
+					url: z.union([z.url(), z.literal('')]),
+				})
+				.optional(),
 			tags: z.array(z.string()),
 			repo_url: z.url().optional(),
 			paper_url: z.url().optional(),

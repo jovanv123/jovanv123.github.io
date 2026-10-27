@@ -31,13 +31,23 @@ slides:                                          # project page carousel, in ord
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
-stats:
+stats:                                           # empty values are hidden
   - { value: "4th", label: "of 160+ teams, qualifying" }
+  - { value: "", label: "insertion success · simulation" }
+  - { value: "", label: "insertion success · real cell" }
+  - { value: "", label: "avg. cycle time" }
+comparison:                                      # Results table, shown once any value is filled
+  columns: ["Success rate", "Position error"]
+  rows:
+    - { label: "Stereo reconstruction", values: ["", ""] }
+    - { label: "Direct 3D estimation", values: ["", ""] }
 tags: ["ROS 2", "Gazebo", "OpenCV", "PyTorch", "Python", "UR5e", "xArm7"]
 # repo_url:
 # paper_url:
 featured: true
 ---
+
+import Flowchart from '../../../components/Flowchart.astro';
 
 ## Problem
 
@@ -47,10 +57,21 @@ Fully learned AI policies are often non-deterministic: the same scene can produc
 
 The system combines camera-based pose estimation with finely tuned impedance control. Perception gets the gripper close, using either stereo reconstruction (YOLO segmentation + SVD triangulation) or direct 3D estimation. Compliant control with force feedback and a spiral search then finds the port despite small estimation errors. The result is predictable behaviour that transferred from a simulated UR5e to a real xArm7.
 
+<Flowchart code={`
+flowchart LR
+  CAM[Wrist cameras] --> SEG[YOLO segmentation]
+  SEG --> TRI[SVD triangulation]
+  CAM ==> D3D[Direct 3D estimation]
+  TRI --> POSE[Port pose]
+  D3D ==> POSE
+  POSE ==> APP[Approach]
+  APP ==> IMP[Impedance control + F/T]
+  IMP ==> SPI[Spiral search]
+  SPI ==> OK[Inserted]
+`} />
+
 ## My contribution
 
 Led the team and developed the perception pipeline and the impedance-controlled insertion policy.
 
 ## Results
-
-{/* TODO: success rate / timing numbers. */}

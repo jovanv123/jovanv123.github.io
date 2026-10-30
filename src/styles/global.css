@@ -243,6 +243,11 @@
 	.cs-section-wide {
 		@apply md:grid-cols-1 md:gap-y-6;
 
+		/* Seasons / Results slides keep the 24px heading gap on mobile too. */
+		&:has(.seasons) {
+			@apply gap-y-6;
+		}
+
 		& .cs-body {
 			@apply max-w-none;
 		}
@@ -533,10 +538,11 @@
 	}
 
 	/* Seasons (SeasonCarousel): text slides stacked in one cell, crossfading like the captions.
-	   The cell is the tallest slide's natural height plus 24px above and below; every slide
-	   centres its content in it, and the two columns centre on each other. */
+	   The cell is the tallest slide's natural height plus 8px above and below (~32px under the
+	   heading, ~16px over the arrows); every slide centres its content in it, and the two
+	   columns centre on each other. */
 	.season-track {
-		@apply grid py-6;
+		@apply grid py-2;
 		touch-action: pan-y;
 	}
 
@@ -600,12 +606,9 @@
 		@apply mt-3 text-case;
 	}
 
+	/* Arrows only, right-aligned under the slides. */
 	.season-controls {
-		@apply flex items-center justify-between gap-6 border-t border-border pt-3;
-	}
-
-	.seasons:hover .carousel-counter {
-		@apply text-accent;
+		@apply mt-2 flex justify-end gap-2;
 	}
 
 	/* The shared arrow squares, in the controls row instead of over a stage. */

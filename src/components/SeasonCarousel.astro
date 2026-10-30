@@ -16,7 +16,7 @@ interface Props {
 	tabs?: boolean;
 }
 
-// Text-only counterpart of MediaCarousel (same arrows, counter, keys, swipe and 150 ms
+// Text-only counterpart of MediaCarousel (same arrows, keys, swipe and 150 ms
 // crossfade, via lib/carousel). Slides share one grid cell, so the carousel keeps the
 // height of the tallest slide (recomputed by the browser whenever text rewraps) and the
 // page never jumps; every slide's content is centred vertically in that height. Per slide:
@@ -24,7 +24,6 @@ interface Props {
 // paragraph (right); stacked on mobile. The season names show in the SeasonTabs row.
 // Styles live in global.css (.seasons).
 const { items, label = 'Seasons', tabs = false } = Astro.props;
-const pad = (n: number) => String(n).padStart(2, '0');
 const single = items.length === 1;
 ---
 
@@ -56,11 +55,8 @@ const single = items.length === 1;
 	</div>
 	{!single && (
 		<div class="season-controls">
-			<p class="carousel-counter meta"><span data-index>01</span> / {pad(items.length)}</p>
-			<div class="flex gap-2">
-				<button type="button" class="carousel-button season-button" aria-label="Previous season" data-prev>←</button>
-				<button type="button" class="carousel-button season-button" aria-label="Next season" data-next>→</button>
-			</div>
+			<button type="button" class="carousel-button season-button" aria-label="Previous season" data-prev>←</button>
+			<button type="button" class="carousel-button season-button" aria-label="Next season" data-next>→</button>
 		</div>
 	)}
 </div>

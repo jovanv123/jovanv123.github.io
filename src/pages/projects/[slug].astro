@@ -84,10 +84,7 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 			</p>
 		)}
 
-		<CaseStudy stats={data.stats} comparison={data.comparison}>
-			<Content />
-			{data.outcome && <SeasonCarousel slot="outcome" items={[data.outcome]} label="Result" />}
-		</CaseStudy>
+		<CaseStudy outcome={data.outcome} stats={data.stats} comparison={data.comparison}><Content /></CaseStudy>
 
 		{data.seasons.length > 0 && (
 			<section class="cs-section cs-section-wide" aria-labelledby="seasons-heading">

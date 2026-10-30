@@ -1,12 +1,12 @@
 ---
 interface Props {
+	/** Frontmatter `outcome`, the headline result leading the Results section. */
+	outcome?: { result: string; result_label: string; text: string };
 	/** Frontmatter `stats`, shown at the top of the Results section (empty values hidden). */
 	stats: { value: string; label: string }[];
 	/** Frontmatter `comparison`, a table under the stats once any cell is filled. */
 	comparison?: { columns: string[]; rows: { label: string; values: string[] }[] };
 }
-// Named slot `outcome`: a single static season block (SeasonCarousel) leading the Results
-// section, which then goes full-column like the Seasons section.
 
 // Shapes the rendered MDX body (the default slot) into numbered two-column sections:
 // each `## Heading` and what follows it becomes
@@ -15,7 +15,7 @@ interface Props {
 // list items and headings starting with "TODO" are dropped, and so are sections left empty.
 // Lists where every item is "**Name**: description" render as a row of terms (.cs-terms).
 // Done on the HTML because the Markdown processor (satteri) runs no rehype plugins.
-const { comparison } = Astro.props;
+const { outcome, comparison } = Astro.props;
 const stats = Astro.props.stats.filter((s) => s.value.trim());
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -35,7 +35,9 @@ const comparisonHtml = comparison?.rows.some((row) => row.values.some((value) =>
 			.join('')}</tbody></table>`
 	: '';
 
-const outcomeHtml = Astro.slots.has('outcome') ? await Astro.slots.render('outcome') : '';
+const outcomeHtml = outcome
+	? `<p class="cs-outcome"><span class="cs-stat-value">${escape(outcome.result)}</span><span class="cs-outcome-label">${escape(outcome.result_label)}</span></p><p>${escape(outcome.text)}</p>`
+	: '';
 
 const raw = (await Astro.slots.render('default'))
 	// TODO lines: whole paragraphs, list items and headings whose text starts with "TODO".
@@ -61,11 +63,9 @@ const html =
 			const end = part.indexOf('</h2>') + '</h2>'.length;
 			const heading = part.slice(0, end);
 			const title = heading.replace(/<[^>]+>/g, '').trim().toLowerCase();
-			const results = title === 'results';
-			const body = (results ? outcomeHtml + statsHtml + comparisonHtml : '') + part.slice(end);
+			const body = (title === 'results' ? outcomeHtml + statsHtml + comparisonHtml : '') + part.slice(end);
 			if (isEmpty(body)) return '';
-			const wide = results && outcomeHtml ? ' cs-section-wide' : '';
-			return `<section class="cs-section${wide}"><div class="cs-head"><span class="cs-num"></span>${heading}</div><div class="cs-body">${body}</div></section>`;
+			return `<section class="cs-section"><div class="cs-head"><span class="cs-num"></span>${heading}</div><div class="cs-body">${body}</div></section>`;
 		})
 		.join('');
 ---

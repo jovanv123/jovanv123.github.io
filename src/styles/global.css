@@ -532,14 +532,16 @@
 		}
 	}
 
-	/* Seasons (SeasonCarousel): text slides stacked in one cell, crossfading like the captions. */
+	/* Seasons (SeasonCarousel): text slides stacked in one cell, crossfading like the captions.
+	   The cell is the tallest slide's natural height plus 24px above and below; every slide
+	   centres its content in it, and the two columns centre on each other. */
 	.season-track {
-		@apply grid;
+		@apply grid py-6;
 		touch-action: pan-y;
 	}
 
 	.season {
-		@apply grid content-start gap-6 md:grid-cols-case md:gap-x-10;
+		@apply flex h-full flex-col justify-center;
 		grid-area: 1 / 1;
 		opacity: 0;
 		visibility: hidden;
@@ -549,6 +551,15 @@
 			opacity: 1;
 			visibility: visible;
 			transition: opacity 150ms;
+		}
+	}
+
+	.season-inner {
+		@apply grid gap-6 md:grid-cols-case md:items-center md:gap-x-10;
+
+		/* No leading margin on either column, so the visible text is what gets centred. */
+		& > * > :first-child {
+			@apply mt-0;
 		}
 	}
 
@@ -577,7 +588,7 @@
 	}
 
 	.season-controls {
-		@apply mt-6 flex items-center justify-between gap-6 border-t border-border pt-3;
+		@apply flex items-center justify-between gap-6 border-t border-border pt-3;
 	}
 
 	.seasons:hover .carousel-counter {

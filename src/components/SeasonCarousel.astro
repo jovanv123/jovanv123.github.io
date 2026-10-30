@@ -16,7 +16,8 @@ interface Props {
 
 // Text-only counterpart of MediaCarousel (same arrows, counter, keys, swipe and 150 ms
 // crossfade, via lib/carousel). Slides share one grid cell, so the carousel keeps the
-// height of the tallest slide and the page never jumps. Per slide: the result as a
+// height of the tallest slide (recomputed by the browser whenever text rewraps) and the
+// page never jumps; every slide's content is centred vertically in that height. Per slide: the result as a
 // large accent value over its label and the season (left), then the mono role line
 // and a paragraph (right); stacked on mobile.
 // Styles live in global.css (.seasons).
@@ -29,14 +30,16 @@ const single = items.length === 1;
 	<div class="season-track" aria-live={single ? undefined : 'polite'} data-track>
 		{items.map((item, i) => (
 			<article class:list={['season', i === 0 && 'is-active']} aria-label={item.season} aria-hidden={i > 0 ? 'true' : undefined} inert={i > 0} data-season>
-				<div>
-					<p class="season-result">{item.result}</p>
-					<p class="season-label">{item.result_label}</p>
-					<p class="season-name">{item.season}</p>
-				</div>
-				<div class="season-body">
-					<p class="season-role">{item.role}</p>
-					<p class="season-text">{item.text}</p>
+				<div class="season-inner">
+					<div>
+						<p class="season-result">{item.result}</p>
+						<p class="season-label">{item.result_label}</p>
+						<p class="season-name">{item.season}</p>
+					</div>
+					<div class="season-body">
+						<p class="season-role">{item.role}</p>
+						<p class="season-text">{item.text}</p>
+					</div>
 				</div>
 			</article>
 		))}

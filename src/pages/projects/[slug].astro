@@ -32,11 +32,8 @@ const slides: Slide[] = await Promise.all(
 	),
 );
 
-// Metadata: Role and Result, stacked; hidden when empty.
-const facts = [
-	data.role ? { label: 'Role', value: data.role } : null,
-	data.result ? { label: 'Result', value: data.result_detail ?? data.result } : null,
-].filter((fact) => fact !== null);
+// Metadata: Role; hidden when empty.
+const facts = [data.role ? { label: 'Role', value: data.role } : null].filter((fact) => fact !== null);
 
 const links = [
 	data.repo_url ? { label: 'Code', href: data.repo_url } : null,
@@ -48,7 +45,7 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 
 <BaseLayout title={data.title} description={data.summary}>
 	<article class="project pt-12">
-		{/* Title and context left (~60%), Role and Result stacked right; below a hairline on mobile. */}
+		{/* Title and context left (~60%), Role right; below a hairline on mobile. */}
 		<header class="grid gap-8 md:grid-cols-5 md:gap-12">
 			<div class="md:col-span-3">
 				<p class="meta"><a href={resolveHref('#projects')} class="no-underline">← Work</a></p>

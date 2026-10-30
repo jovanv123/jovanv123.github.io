@@ -63,8 +63,16 @@ const projects = defineCollection({
 					}),
 				)
 				.default([]),
-			// Headline result leading the Results section: large value with its label beside it, then a paragraph.
-			outcome: z.object({ result: z.string(), result_label: z.string(), text: z.string() }).optional(),
+			// Results block: one static SeasonCarousel slide (result, label, season | role, text).
+			outcome: z
+				.object({
+					season: z.string(),
+					result: z.string(),
+					result_label: z.string(),
+					role: z.string(),
+					text: z.string(),
+				})
+				.optional(),
 			// Shown as large figures at the top of the Results section; entries with an empty value are hidden.
 			stats: z.array(z.object({ value: z.string(), label: z.string() })).default([]),
 			// Compact table under the stats, shown once any cell is filled.

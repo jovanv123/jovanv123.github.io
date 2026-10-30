@@ -320,15 +320,6 @@
 		}
 	}
 
-	/* Results headline: large accent value with its mono label beside it, baseline-aligned. */
-	.cs-outcome {
-		@apply flex items-baseline gap-3;
-	}
-
-	.cs-outcome-label {
-		@apply meta normal-case;
-	}
-
 	/* Results: figures in a row, hairline dividers between. */
 	.cs-stats {
 		@apply mb-6 grid grid-cols-1 divide-y divide-border sm:grid-flow-col sm:auto-cols-fr sm:divide-x sm:divide-y-0;

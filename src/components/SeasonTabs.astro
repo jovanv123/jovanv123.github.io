@@ -1,0 +1,33 @@
+---
+import type { Season } from './SeasonCarousel.astro';
+
+interface Props {
+	/** Same `seasons` as the SeasonCarousel in this section, newest first. */
+	items: Season[];
+}
+
+// Tab row in a Seasons section heading: "Season 2026 → Season 2025 → …" (years only below
+// sm). The active tab is near-black with a 2px accent underline, the rest muted; the
+// SeasonCarousel script in the same section wires clicks and keeps it in sync.
+// Styles live in global.css (.season-tabs).
+const { items } = Astro.props;
+const year = (season: string) => season.match(/\d{4}/)?.[0] ?? season;
+---
+
+<div class="season-tabs" role="tablist" aria-label="Seasons">
+	{items.map((item, i) => (
+		<>
+			{i > 0 && <span class="season-tab-sep" aria-hidden="true">→</span>}
+			<button
+				type="button"
+				class="season-tab"
+				role="tab"
+				id={`season-tab-${i}`}
+				aria-controls={`season-panel-${i}`}
+				aria-selected={i === 0 ? 'true' : 'false'}
+				tabindex={i === 0 ? 0 : -1}
+				data-carousel-tab
+			><span class="max-sm:hidden">Season </span>{year(item.season)}</button>
+		</>
+	))}
+</div>

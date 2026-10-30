@@ -1,6 +1,7 @@
 // Shared carousel behaviour (MediaCarousel, SeasonCarousel): prev/next with wraparound,
 // arrow keys while the carousel is focused or in view, swipe on `swipeArea`, and the
-// 01 / 03 counter. `onShow` renders the slide at the given index.
+// 01 / 03 counter. `onShow` renders the slide at the given index; the returned `show`
+// jumps to an index from elsewhere (e.g. season tabs).
 export function initCarousel(root: HTMLElement, count: number, swipeArea: HTMLElement, onShow: (index: number) => void) {
 	const counter = root.querySelector('[data-index]');
 	let current = 0;
@@ -21,7 +22,7 @@ export function initCarousel(root: HTMLElement, count: number, swipeArea: HTMLEl
 		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
 		const active = document.activeElement;
 		const editing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || (active instanceof HTMLElement && active.isContentEditable);
-		if (!root.contains(active) && (!inView || editing)) return;
+		if (!root.contains(active) && !(active instanceof HTMLElement && active.matches('[data-carousel-tab]')) && (!inView || editing)) return;
 		event.preventDefault();
 		show(current + (event.key === 'ArrowRight' ? 1 : -1));
 	});
@@ -37,4 +38,6 @@ export function initCarousel(root: HTMLElement, count: number, swipeArea: HTMLEl
 		const dy = event.changedTouches[0].clientY - startY;
 		if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) show(current + (dx < 0 ? 1 : -1));
 	}, { passive: true });
+
+	return show;
 }

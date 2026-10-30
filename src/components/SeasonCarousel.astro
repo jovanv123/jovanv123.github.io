@@ -12,16 +12,18 @@ interface Props {
 	items: Season[];
 	/** Accessible name of the block. */
 	label?: string;
+	/** Slides are tab panels of a SeasonTabs row (ids season-tab-i / season-panel-i). */
+	tabs?: boolean;
 }
 
 // Text-only counterpart of MediaCarousel (same arrows, counter, keys, swipe and 150 ms
 // crossfade, via lib/carousel). Slides share one grid cell, so the carousel keeps the
 // height of the tallest slide (recomputed by the browser whenever text rewraps) and the
-// page never jumps; every slide's content is centred vertically in that height. Per slide: the result as a
-// large accent value over its label and the season (left), then the mono role line
-// and a paragraph (right); stacked on mobile.
+// page never jumps; every slide's content is centred vertically in that height. Per slide:
+// the result as a large accent value over its label (left), then the mono role line and a
+// paragraph (right); stacked on mobile. The season names show in the SeasonTabs row.
 // Styles live in global.css (.seasons).
-const { items, label = 'Seasons' } = Astro.props;
+const { items, label = 'Seasons', tabs = false } = Astro.props;
 const pad = (n: number) => String(n).padStart(2, '0');
 const single = items.length === 1;
 ---
@@ -29,12 +31,20 @@ const single = items.length === 1;
 <div class="seasons" data-seasons tabindex={single ? undefined : 0} aria-roledescription={single ? undefined : 'carousel'} aria-label={label}>
 	<div class="season-track" aria-live={single ? undefined : 'polite'} data-track>
 		{items.map((item, i) => (
-			<article class:list={['season', i === 0 && 'is-active']} aria-label={item.season} aria-hidden={i > 0 ? 'true' : undefined} inert={i > 0} data-season>
+			<article
+				class:list={['season', i === 0 && 'is-active']}
+				id={tabs ? `season-panel-${i}` : undefined}
+				role={tabs ? 'tabpanel' : undefined}
+				aria-labelledby={tabs ? `season-tab-${i}` : undefined}
+				aria-label={tabs ? undefined : item.season}
+				aria-hidden={i > 0 ? 'true' : undefined}
+				inert={i > 0}
+				data-season
+			>
 				<div class="season-inner">
 					<div>
 						<p class="season-result">{item.result}</p>
 						<p class="season-label">{item.result_label}</p>
-						<p class="season-name">{item.season}</p>
 					</div>
 					<div class="season-body">
 						<p class="season-role">{item.role}</p>
@@ -61,8 +71,10 @@ const single = items.length === 1;
 	for (const root of document.querySelectorAll<HTMLElement>('[data-seasons]')) {
 		const slides = [...root.querySelectorAll<HTMLElement>('[data-season]')];
 		if (slides.length < 2) continue;
+		// Optional SeasonTabs row in the same section's heading.
+		const tabs = [...(root.closest('section')?.querySelectorAll<HTMLElement>('[data-carousel-tab]') ?? [])];
 
-		initCarousel(root, slides.length, root.querySelector<HTMLElement>('[data-track]')!, (current) => {
+		const show = initCarousel(root, slides.length, root.querySelector<HTMLElement>('[data-track]')!, (current) => {
 			slides.forEach((slide, i) => {
 				const active = i === current;
 				slide.classList.toggle('is-active', active);
@@ -70,6 +82,14 @@ const single = items.length === 1;
 				if (active) slide.removeAttribute('aria-hidden');
 				else slide.setAttribute('aria-hidden', 'true');
 			});
+			const focused = tabs.includes(document.activeElement as HTMLElement);
+			tabs.forEach((tab, i) => {
+				const active = i === current;
+				tab.setAttribute('aria-selected', String(active));
+				tab.tabIndex = active ? 0 : -1;
+				if (active && focused) tab.focus();
+			});
 		});
+		tabs.forEach((tab, i) => tab.addEventListener('click', () => show(i)));
 	}
 </script>

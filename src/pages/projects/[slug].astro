@@ -5,6 +5,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import MediaCarousel, { type Slide } from '../../components/MediaCarousel.astro';
 import CaseStudy from '../../components/CaseStudy.astro';
 import SeasonCarousel from '../../components/SeasonCarousel.astro';
+import SeasonTabs from '../../components/SeasonTabs.astro';
 import { coverUrl, getProjects, videoPoster } from '../../lib/projects';
 import { resolveHref } from '../../lib/site';
 
@@ -88,8 +89,12 @@ const sizes = '(min-width: 1100px) 1100px, 100vw';
 
 		{data.seasons.length > 0 && (
 			<section class="cs-section cs-section-wide" aria-labelledby="seasons-heading">
-				<div class="cs-head"><span class="cs-num"></span><h2 id="seasons-heading">Seasons</h2></div>
-				<div class="cs-body"><SeasonCarousel items={data.seasons} /></div>
+				<div class="cs-head">
+					<span class="cs-num"></span>
+					<h2 id="seasons-heading" class="sr-only">Seasons</h2>
+					<SeasonTabs items={data.seasons} />
+				</div>
+				<div class="cs-body"><SeasonCarousel items={data.seasons} tabs /></div>
 			</section>
 		)}
 

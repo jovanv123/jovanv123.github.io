@@ -563,16 +563,29 @@
 		}
 	}
 
+	/* Season tabs in the Seasons heading: heading-sized, mono arrows between. */
+	.season-tabs {
+		@apply flex flex-wrap items-baseline gap-x-2.5 text-section font-heading tracking-tight;
+	}
+
+	.season-tab {
+		@apply cursor-pointer border-b-2 border-transparent text-muted hover:text-accent-hover;
+
+		&[aria-selected='true'] {
+			@apply border-accent text-text hover:text-text;
+		}
+	}
+
+	.season-tab-sep {
+		@apply font-mono text-sm text-muted;
+	}
+
 	.season-result {
 		@apply text-stat font-heading tracking-tight text-accent;
 	}
 
 	.season-label {
 		@apply meta mt-2 normal-case;
-	}
-
-	.season-name {
-		@apply mt-1 font-mono text-xs tracking-wider;
 	}
 
 	.season-body {

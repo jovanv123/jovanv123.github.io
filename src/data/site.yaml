@@ -155,7 +155,7 @@ education:
 
 skills:
   heading: "Technical skills"
-  display: "cards"                # 4/2/1 grid of hairline cards: name, then one icon + label row per item
+  display: "cards"                # 5/3/1 grid of hairline cards: name, then one icon + label row per item
   # Item icons are iconify names: "simple-icons:<brand>" logos, or a "tabler:<generic>"
   # glyph where the tool has no brand logo.
   groups:
@@ -175,15 +175,18 @@ skills:
         - { label: "YOLO", icon: "simple-icons:yolo" }
         - { label: "OpenCV", icon: "simple-icons:opencv" }
         - { label: "PyTorch", icon: "simple-icons:pytorch" }
-        - { label: "TensorFlow Lite", icon: "simple-icons:tensorflow" }
     - name: "Embedded / Infra"
       items:
         - { label: "STM32", icon: "simple-icons:stmicroelectronics" }
         - { label: "Raspberry Pi", icon: "simple-icons:raspberrypi" }
         - { label: "ESP32", icon: "simple-icons:espressif" }
-        - { label: "Docker", icon: "simple-icons:docker" }
         - { label: "Linux", icon: "simple-icons:linux" }
         - { label: "LaTeX", icon: "simple-icons:latex" }
+    - name: "CAD & 3D"
+      items:
+        - { label: "Fusion 360", icon: "simple-icons:autodesk" }
+        - { label: "Blender", icon: "simple-icons:blender" }
+        - { label: "Unreal Engine 5", icon: "simple-icons:unrealengine" }
 
 contact:
   heading: "Contact"

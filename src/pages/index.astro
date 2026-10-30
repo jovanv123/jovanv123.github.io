@@ -135,9 +135,9 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 	</Section>
 
 	<Section id="skills" index="03" heading={skills.heading}>
-		<ul class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+		<ul class="mt-10 grid gap-6 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
 			{skills.groups.map((group) => (
-				<li class="group border border-border p-6 hover:border-accent-hover">
+				<li class="group border border-border p-6 hover:border-accent-hover xl:p-5">
 					<h3 class="text-lg tracking-tight">{group.name}</h3>
 					<ul class="mt-4 space-y-2.5 text-sm text-muted">
 						{group.items.map((item) => (

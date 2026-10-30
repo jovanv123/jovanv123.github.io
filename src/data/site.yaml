@@ -186,7 +186,6 @@ skills:
       items:
         - { label: "Fusion 360", icon: "simple-icons:autodesk" }
         - { label: "Blender", icon: "simple-icons:blender" }
-        - { label: "Unreal Engine 5", icon: "simple-icons:unrealengine" }
 
 contact:
   heading: "Contact"

@@ -63,6 +63,16 @@ const projects = defineCollection({
 					}),
 				)
 				.default([]),
+			// Single static season-style block (result, label, season | role, text) leading the Results section.
+			outcome: z
+				.object({
+					season: z.string(),
+					result: z.string(),
+					result_label: z.string(),
+					role: z.string(),
+					text: z.string(),
+				})
+				.optional(),
 			// Shown as large figures at the top of the Results section; entries with an empty value are hidden.
 			stats: z.array(z.object({ value: z.string(), label: z.string() })).default([]),
 			// Compact table under the stats, shown once any cell is filled.

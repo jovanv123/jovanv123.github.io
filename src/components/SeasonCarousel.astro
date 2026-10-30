@@ -10,6 +10,8 @@ export type Season = {
 interface Props {
 	/** Frontmatter `seasons`, newest first. */
 	items: Season[];
+	/** Accessible name of the block. */
+	label?: string;
 }
 
 // Text-only counterpart of MediaCarousel (same arrows, counter, keys, swipe and 150 ms
@@ -18,13 +20,13 @@ interface Props {
 // large accent value over its label and the season (left), then the mono role line
 // and a paragraph (right); stacked on mobile.
 // Styles live in global.css (.seasons).
-const { items } = Astro.props;
+const { items, label = 'Seasons' } = Astro.props;
 const pad = (n: number) => String(n).padStart(2, '0');
 const single = items.length === 1;
 ---
 
-<div class="seasons" data-seasons tabindex={single ? undefined : 0} aria-roledescription={single ? undefined : 'carousel'} aria-label="Seasons">
-	<div class="season-track" aria-live="polite" data-track>
+<div class="seasons" data-seasons tabindex={single ? undefined : 0} aria-roledescription={single ? undefined : 'carousel'} aria-label={label}>
+	<div class="season-track" aria-live={single ? undefined : 'polite'} data-track>
 		{items.map((item, i) => (
 			<article class:list={['season', i === 0 && 'is-active']} aria-label={item.season} aria-hidden={i > 0 ? 'true' : undefined} inert={i > 0} data-season>
 				<div>

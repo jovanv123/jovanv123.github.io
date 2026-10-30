@@ -5,6 +5,8 @@ interface Props {
 	/** Frontmatter `comparison`, a table under the stats once any cell is filled. */
 	comparison?: { columns: string[]; rows: { label: string; values: string[] }[] };
 }
+// Named slot `outcome`: a single static season block (SeasonCarousel) leading the Results
+// section, which then goes full-column like the Seasons section.
 
 // Shapes the rendered MDX body (the default slot) into numbered two-column sections:
 // each `## Heading` and what follows it becomes
@@ -33,6 +35,8 @@ const comparisonHtml = comparison?.rows.some((row) => row.values.some((value) =>
 			.join('')}</tbody></table>`
 	: '';
 
+const outcomeHtml = Astro.slots.has('outcome') ? await Astro.slots.render('outcome') : '';
+
 const raw = (await Astro.slots.render('default'))
 	// TODO lines: whole paragraphs, list items and headings whose text starts with "TODO".
 	.replace(/<(p|li|h[1-6])\b[^>]*>\s*TODO[\s\S]*?<\/\1>/g, '')
@@ -57,9 +61,11 @@ const html =
 			const end = part.indexOf('</h2>') + '</h2>'.length;
 			const heading = part.slice(0, end);
 			const title = heading.replace(/<[^>]+>/g, '').trim().toLowerCase();
-			const body = (title === 'results' ? statsHtml + comparisonHtml : '') + part.slice(end);
+			const results = title === 'results';
+			const body = (results ? outcomeHtml + statsHtml + comparisonHtml : '') + part.slice(end);
 			if (isEmpty(body)) return '';
-			return `<section class="cs-section"><div class="cs-head"><span class="cs-num"></span>${heading}</div><div class="cs-body">${body}</div></section>`;
+			const wide = results && outcomeHtml ? ' cs-section-wide' : '';
+			return `<section class="cs-section${wide}"><div class="cs-head"><span class="cs-num"></span>${heading}</div><div class="cs-body">${body}</div></section>`;
 		})
 		.join('');
 ---

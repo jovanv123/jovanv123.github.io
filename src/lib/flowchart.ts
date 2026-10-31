@@ -2,6 +2,9 @@
 // static inline SVG (no runtime JS, no dependencies). Supported lines:
 //   A[Label] --> B[Label]        A -- text --> B        (plain edges)
 //   A ==> B                      A == text ==> B        (key path, drawn in accent)
+//   A[Label]                     (a node on its own)
+//   subgraph G[Title] … end      (one group: its nodes share a titled frame; other nodes in the
+//                                 frame's columns are placed below it)
 // Labels may contain <br/>; single-line labels longer than WRAP characters wrap at spaces. Layout is a small layered (Sugiyama-style) pass: back edges are
 // found by DFS and routed above the diagram, long edges get dummy points, and each layer is
 // ordered by the barycentre of its predecessors. Styles live in global.css (.diagram).
@@ -19,7 +22,11 @@ const WRAP = 14;
 const ROW = 16; // between nodes in a layer
 const BACK = 26; // band above the nodes for back edges
 const ARROW = 6;
+const FRAME = 12; // group frame padding
+const TITLE = 24; // group title row
 
+const NODE = /^(\w+)\[([^\]]*)\]$/;
+const SUBGRAPH = /^subgraph\s+\w+(?:\[([^\]]*)\])?$/;
 const EDGE = /^(\w+)(?:\[([^\]]*)\])?\s*(?:(-->)|(==>)|--\s*(.+?)\s*-->|==\s*(.+?)\s*==>)\s*(\w+)(?:\[([^\]]*)\])?$/;
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -46,22 +53,43 @@ export function parseFlowchart(code: string) {
 	if (!/^(flowchart|graph)\s+LR$/.test(header)) throw new Error(`Flowchart: only "flowchart LR" is supported, got "${header}"`);
 	const labels = new Map<string, string>();
 	const edges: Edge[] = [];
+	const group = { title: '', members: new Set<string>() };
+	let inGroup = false;
+	const seen = (id: string) => inGroup && group.members.add(id);
 	for (const line of lines) {
+		const sub = SUBGRAPH.exec(line);
+		if (sub) {
+			if (group.title) throw new Error('Flowchart: only one subgraph is supported');
+			(group.title = sub[1] ?? 'group'), (inGroup = true);
+			continue;
+		}
+		if (line === 'end') {
+			inGroup = false;
+			continue;
+		}
+		const node = NODE.exec(line);
+		if (node) {
+			labels.set(node[1], node[2]);
+			seen(node[1]);
+			continue;
+		}
 		const m = EDGE.exec(line);
 		if (!m) throw new Error(`Flowchart: cannot parse "${line}"`);
 		const [, from, fromLabel, , thick, plainText, keyText, to, toLabel] = m;
 		for (const [id, label] of [[from, fromLabel], [to, toLabel]] as const) {
 			if (label !== undefined) labels.set(id, label);
 			else if (!labels.has(id)) labels.set(id, id);
+			if (label !== undefined) seen(id);
 		}
 		const key = Boolean(thick || keyText);
 		edges.push({ from, to, label: (plainText ?? keyText ?? '').trim(), key });
 	}
-	return { labels, edges };
+	return { labels, edges, group: group.members.size ? group : null };
 }
 
 export function renderFlowchart(code: string, id: string) {
-	const { labels, edges } = parseFlowchart(code);
+	const { labels, edges, group } = parseFlowchart(code);
+	const member = (nid: string) => Boolean(group?.members.has(nid));
 	const ids = [...labels.keys()];
 	const nodes = new Map<string, Node>(
 		ids.map((nid) => {
@@ -114,7 +142,10 @@ export function renderFlowchart(code: string, id: string) {
 		return { edge: e, points };
 	});
 
-	// Order each layer by the barycentre of its predecessors (two sweeps).
+	// Group membership: a dummy point belongs to the group when both ends of its edge do.
+	const inGroup = (n: Node) => (n.dummy ? n.id.split('@')[0].split('>').every(member) : member(n.id));
+
+	// Order each layer by the barycentre of its predecessors (two sweeps); group nodes first.
 	const layerCount = Math.max(...[...nodes.values()].map((n) => n.layer)) + 1;
 	const layers: Node[][] = Array.from({ length: layerCount }, () => []);
 	for (const n of nodes.values()) layers[n.layer].push(n);
@@ -126,7 +157,7 @@ export function renderFlowchart(code: string, id: string) {
 				const p = preds(n);
 				return p.length ? p.reduce((s, q) => s + q.order, 0) / p.length : n.order;
 			};
-			layer.sort((a, b) => bary(a) - bary(b) || a.order - b.order).forEach((n, i) => (n.order = i));
+			layer.sort((a, b) => Number(inGroup(b)) - Number(inGroup(a)) || bary(a) - bary(b) || a.order - b.order).forEach((n, i) => (n.order = i));
 		}
 	}
 
@@ -136,29 +167,55 @@ export function renderFlowchart(code: string, id: string) {
 		Math.max(GAP, ...routes.filter((r) => r.edge.label && r.points.at(-1)!.layer === l + 1).map((r) => textWidth(r.edge.label) + 36)),
 	);
 	const colX: number[] = [];
-	let x = 0;
+	let x = group ? FRAME : 0;
 	layers.forEach((_, l) => {
 		colX.push(x);
 		x += colW[l] + gapAfter[l];
 	});
-	const width = x - gapAfter[layerCount - 1];
+	// Group frame: the columns holding group nodes.
+	const groupLayers = layers.flatMap((layer, l) => (layer.some(inGroup) ? [l] : []));
+	const frameX0 = group ? colX[groupLayers[0]] - FRAME : 0;
+	const frameX1 = group ? colX[groupLayers.at(-1)!] + colW[groupLayers.at(-1)!] + FRAME : 0;
+	const width = Math.max(x - gapAfter[layerCount - 1], frameX1);
 
-	// Rows: each layer stacked and centred on the tallest layer.
-	const layerH = layers.map((layer) => layer.reduce((s, n) => s + (n.dummy ? LINE : n.h), 0) + ROW * (layer.length - 1));
-	const top = back.size ? BACK : 0;
-	const bodyH = Math.max(...layerH);
-	layers.forEach((layer, l) => {
-		let y = top + (bodyH - layerH[l]) / 2;
-		for (const n of layer) {
+	// Rows: each layer stacked and centred on the tallest layer. With a group, its nodes form a
+	// band inside the frame and the other nodes of the frame's columns a band below it.
+	const stackH = (ns: Node[]) => ns.reduce((s, n) => s + (n.dummy ? LINE : n.h), 0) + ROW * Math.max(0, ns.length - 1);
+	const place = (ns: Node[], l: number, top: number, bandH: number) => {
+		let y = top + (bandH - stackH(ns)) / 2;
+		for (const n of ns) {
 			const h = n.dummy ? LINE : n.h;
 			n.x = colX[l] + (colW[l] - n.w) / 2;
 			n.y = y + h / 2; // centre line
 			y += h + ROW;
 		}
-	});
-	const height = top + bodyH;
+	};
+	const top = back.size ? BACK : 0;
+	let height: number;
+	let frameY1 = 0;
+	if (group) {
+		const framed = (l: number) => l >= groupLayers[0] && l <= groupLayers.at(-1)!;
+		const insideH = Math.max(...layers.map((layer) => stackH(layer.filter(inGroup))));
+		const belowH = Math.max(0, ...layers.map((layer, l) => (framed(l) ? stackH(layer.filter((n) => !inGroup(n))) : 0)));
+		frameY1 = top + TITLE + insideH + FRAME;
+		height = belowH ? frameY1 + GAP + belowH : frameY1;
+		layers.forEach((layer, l) => {
+			if (!framed(l)) return place(layer, l, top, height - top);
+			place(layer.filter(inGroup), l, top + TITLE, insideH);
+			place(layer.filter((n) => !inGroup(n)), l, frameY1 + GAP, belowH);
+		});
+	} else {
+		const bodyH = Math.max(...layers.map(stackH));
+		layers.forEach((layer, l) => place(layer, l, top, bodyH));
+		height = top + bodyH;
+	}
 
 	const out: string[] = [];
+	if (group)
+		out.push(
+			`<rect class="diagram-group" x="${frameX0}" y="${top}" width="${frameX1 - frameX0}" height="${frameY1 - top}"/>` +
+				`<text class="diagram-label diagram-group-title" x="${frameX0 + FRAME}" y="${top + TITLE / 2}">${escape(group.title)}</text>`,
+		);
 	const arrow = (key: boolean) => `marker-end="url(#${id}-${key ? 'key' : 'arrow'})"`;
 	const edgeClass = (key: boolean) => (key ? 'diagram-edge is-key' : 'diagram-edge');
 	const labelBox = (text: string, cx: number, cy: number) => {
@@ -166,8 +223,12 @@ export function renderFlowchart(code: string, id: string) {
 		return `<rect class="diagram-label-bg" x="${cx - w / 2}" y="${cy - 8}" width="${w}" height="16"/><text class="diagram-label" x="${cx}" y="${cy}">${escape(text)}</text>`;
 	};
 
-	// Forward edges: orthogonal, elbow mid-gap (labelled edges turn early so the label sits on the run into the target).
+	// Forward edges: orthogonal, elbow mid-gap (labelled edges turn early so the label sits on the run
+	// into the target; when a target has several labelled edges, they turn late and the label sits on
+	// the run out of the source instead).
+	const shared = (e: Edge) => forward.filter((f) => f.to === e.to && f.label).length > 1;
 	for (const { edge, points } of routes) {
+		const early = !shared(edge);
 		const [a] = points;
 		let d = `M${a.x + a.w},${a.y}`;
 		let labelAt: [number, number] | null = null;
@@ -178,14 +239,12 @@ export function renderFlowchart(code: string, id: string) {
 			const gapEnd = colX[b.layer];
 			const last = i === points.length - 1;
 			const endX = b.dummy ? colX[b.layer] + colW[b.layer] : b.x - ARROW;
-			if (Math.abs(p.y - b.y) < 0.5) d += ` H${endX}`;
-			else {
-				const elbow = edge.label && last ? gapStart + 12 : (gapStart + gapEnd) / 2;
-				d += ` H${elbow} V${b.y} H${endX}`;
-			}
+			const straight = Math.abs(p.y - b.y) < 0.5;
+			const elbow = edge.label && last ? (early ? gapStart + 12 : gapEnd - 12) : (gapStart + gapEnd) / 2;
+			d += straight ? ` H${endX}` : ` H${elbow} V${b.y} H${endX}`;
 			if (last && edge.label) {
-				const from = Math.abs(p.y - b.y) < 0.5 ? gapStart : gapStart + 12;
-				labelAt = [(from + b.x) / 2, b.y];
+				if (!early) labelAt = [(gapStart + (straight ? gapEnd : elbow)) / 2, p.y];
+				else labelAt = [((straight ? gapStart : elbow) + b.x) / 2, b.y];
 			}
 		}
 		out.push(`<path class="${edgeClass(edge.key)}" d="${d}" ${arrow(edge.key)}/>`);

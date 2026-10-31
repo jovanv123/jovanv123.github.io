@@ -1,9 +1,10 @@
 ---
 title: "Edge AI on Microcontrollers"
 slug: "edge-thermostat"
-context: "TinyML on ESP32 · RT-RK internship"
+context: "TinyML on ESP32-S3 · RT-RK internship"
 year: 2025
-summary: "A smart thermostat that learns its user’s preferences. A neural network runs directly on an ESP32 and keeps improving: new setpoint data is sent to a server, which fine-tunes the model and pushes the updated version back to the device."
+result: "0.73 °C prediction error"              # card footer
+summary: "A smart thermostat that learns its user’s comfort temperature. A quantized neural network runs on an ESP32-S3 touchscreen device, predicts the setpoint from outdoor temperature and time of day, and is retrained on the user’s manual corrections."
 focus: "50% 35%"   # card crop (object-position)
 media: "media/edge-thermostat/thermostat-demo.mp4"   # home card hover preview
 slides:                                          # project page carousel, in order
@@ -15,7 +16,13 @@ slides:                                          # project page carousel, in ord
 # cover: { src: "./cover.jpg", alt: "TODO" }
 # gallery:
 #   - { src: "./TODO.jpg", alt: "TODO", caption: "TODO" }
-tags: ["TensorFlow Lite", "ESP32", "FreeRTOS", "Python"]
+outcome:                                         # Results block, one static season-style slide
+  season: "Result"
+  result: "0.73 °C"
+  result_label: "test-set prediction error"
+  role: "Quantized 2-16-8-1 network · ESP-DL · ESP32-S3"
+  text: "The 2-16-8-1 network beat smaller 2-8-4-1 (1.05 °C) and 2-4-1 (1.2 °C) variants. Quantized to integers with ESP-DL, it runs on the ESP32-S3 in under 10 ms per inference alongside the UI and control tasks. A third-degree polynomial regression came close (0.86 °C) and would be far cheaper to retrain on-device, the main trade-off identified for a production version."
+tags: ["C", "ESP-IDF", "FreeRTOS", "LVGL", "ESP-DL", "PyTorch", "ESP32-S3"]
 # repo_url:
 featured: false
 ---
@@ -24,29 +31,28 @@ import Flowchart from '../../../components/Flowchart.astro';
 
 ## Problem
 
-People adjust their thermostat by hand all day. The goal was a device that
-learns those preferences and sets the temperature itself, running on a
-low-cost microcontroller without a constant cloud connection.
+People adjust their thermostat by hand all day. The goal was a device that learns those preferences and sets the temperature itself, running entirely on a low-cost microcontroller.
 
 ## Architecture
 
-The thermostat has three modes:
+Built on a Waveshare ESP32-S3 board with a 4" touchscreen. The firmware runs four FreeRTOS tasks: the LVGL interface (every 20 ms), mode logic with Wi-Fi weather data and neural-network inference (1 s), heating control (1 s) and a stack/memory monitor (5 s).
 
-- **Away**: holds an energy-saving setpoint while nobody is home.
-- **Manual**: the user sets the temperature directly. Every manual
-  adjustment is logged as training data.
-- **Auto**: a trained neural network runs on the ESP32 (TensorFlow Lite)
-  and predicts the setpoint the user would choose.
+- **Auto**: A quantized 2-16-8-1 neural network predicts the comfort temperature from outdoor temperature and hour.
+- **Manual**: The user sets the temperature on a touch slider. Each change becomes training data.
+- **Away**: Follows the outdoor temperature, clipped to 19–26 °C, to save energy.
+
+Every manual change is logged as a ground-truth sample. Once enough new samples accumulate, a Python script retrains the network on the extended dataset, and the device loads the updated model on its next boot, simulating an over-the-air update.
 
 <Flowchart code={`
 flowchart LR
-  USER[Manual setpoints] --> ESP[ESP32 · FreeRTOS<br/>TFLite inference]
-  ESP == setpoint data ==> SRV[Server<br/>fine-tuning]
-  SRV == updated model ==> ESP
-  ESP --> HVAC[Heating control]
+  API[Open-Meteo<br/>weather] -- Wi-Fi --> MODE
+  subgraph ESP[ESP32-S3 · FreeRTOS]
+    UI[LVGL UI] --> MODE[Mode task<br/>ESP-DL inference]
+    MODE --> CTRL[Control task]
+    MON[Monitor task]
+  end
+  UI -- manual setpoints --> PY[Python retraining<br/>PyTorch]
+  PY -- updated model --> MODE
 `} />
 
-## My contribution
-
-Trained and compared regression and neural network models, selected the
-best-performing one, and deployed it on the ESP32 with TensorFlow Lite.
+## Results

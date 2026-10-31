@@ -411,6 +411,18 @@
 		fill: var(--color-background);
 	}
 
+	/* Subgraph frame: hairline box with its title top-left. */
+	.diagram-group {
+		fill: none;
+		stroke: var(--color-border);
+		stroke-width: 1;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.diagram .diagram-group-title {
+		text-anchor: start;
+	}
+
 	/* Results comparison table: hairlines, mono header row and row labels. */
 	.cs-table {
 		@apply mb-6 w-full border-collapse text-sm;

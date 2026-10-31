@@ -101,7 +101,7 @@ focus:                            # area / description / topics — not rendered
       topics: ["ROS 2", "Gazebo", "Impedance control", "F/T sensing"]
     - title: "Embedded Systems"
       text: "Real-time control loops, motion profiling and actuator drivers on microcontrollers; ML deployment on edge hardware."
-      topics: ["STM32", "C", "PID", "TFLite Micro"]
+      topics: ["STM32", "C", "PID", "ESP-DL"]
 
 featured:
   heading: "Featured"             # aria label of the project cards in 01 — Projects
@@ -128,9 +128,9 @@ experience:
       start: "2025-05"
       end: "2025-07"
       points:
-        - "Built an ESP32 smart thermostat running FreeRTOS, with Away, Manual and Auto modes."
-        - "Trained and compared regression and neural-network setpoint models; deployed the best on the device with TensorFlow Lite."
-      tech: ["C", "FreeRTOS", "ESP32", "TensorFlow Lite", "Python"]
+        - "Built an ESP32-S3 touchscreen smart thermostat on FreeRTOS and LVGL, with Auto, Manual and Away modes."
+        - "Trained and quantized a PyTorch setpoint model (0.73 °C error) and deployed it on-device with ESP-DL, with retraining from user corrections."
+      tech: ["C", "ESP-IDF", "FreeRTOS", "LVGL", "ESP-DL", "PyTorch"]
     - role: "Computer Vision Intern"
       company: "DunavNET"
       company_url: ""

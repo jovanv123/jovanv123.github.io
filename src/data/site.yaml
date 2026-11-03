@@ -66,7 +66,7 @@ nav:
     - { label: "Experience", href: "#experience" }
     - { label: "Education",  href: "#education" }
     - { label: "Contact",    href: "#contact" }
-    - { label: "CV",         href: "assets/cv.pdf" }
+    - { label: "CV",         href: "assets/Jovan_Vasic_CV-2.pdf" }
 
 # ------------------------------------------------------------
 #  CONTENT
@@ -79,7 +79,7 @@ profile:
   location: "Munich, DE"
   photo: "me-color.jpg"           # in src/assets/, square crop; a framed placeholder shows until it exists
   email: ""                       # TODO
-  cv: "assets/cv.pdf"
+  cv: "assets/Jovan_Vasic_CV-2.pdf"
   status: "MSc MRBE @ TUM · open to internships & Werkstudent positions"   # mono line with accent dot
 
 # Page copy draft from portfolio.md — not rendered yet (not in the home section order).

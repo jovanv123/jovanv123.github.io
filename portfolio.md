@@ -64,7 +64,7 @@ nav:
     - { label: "Work",       href: "#projects" }
     - { label: "Focus",      href: "#focus" }
     - { label: "Experience", href: "#experience" }
-    - { label: "CV",         href: "assets/cv.pdf" }
+    - { label: "CV",         href: "assets/Jovan_Vasic_CV-2.pdf" }
     - { label: "Contact",    href: "#contact" }
 
 # ------------------------------------------------------------
@@ -76,7 +76,7 @@ profile:
   location: "Munich, DE"
   photo: ""                       # optional; this layout works without one
   email: ""                       # TODO
-  cv: "assets/cv.pdf"
+  cv: "assets/Jovan_Vasic_CV-2.pdf"
   status: "MSc MRBE @ TUM · open to HiWi & research positions"   # mono line with accent dot
 
 hero:
@@ -96,7 +96,7 @@ focus:                            # area / description / topics
       topics: ["ROS 2", "Gazebo", "Impedance control", "F/T sensing"]
     - title: "Embedded Systems"
       text: "Real-time control loops, motion profiling and actuator drivers on microcontrollers; ML deployment on edge hardware."
-      topics: ["STM32", "C", "PID", "TFLite Micro"]
+      topics: ["STM32", "C", "PID", "ESP-DL"]
 
 projects:
   heading: "Selected work"
@@ -125,12 +125,12 @@ projects:
       featured: true
     - title: "Edge AI on Microcontrollers"
       slug: "edge-thermostat"
-      context: "TinyML on ESP32 · RT-RK internship"
+      context: "TinyML on ESP32-S3 · RT-RK internship"
       year: 2025
       result: ""
-      summary: "Trained and compared regression and neural network models predicting room setpoint temperature from user input data; deployed the best model on an ESP32 with TensorFlow Lite."
+      summary: "A smart thermostat that learns its user’s comfort temperature. A quantized neural network runs on an ESP32-S3 touchscreen device, predicts the setpoint from outdoor temperature and time of day, and is retrained on the user’s manual corrections."
       media: "media/edge-thermostat/thermostat-demo.mp4"
-      tags: ["TensorFlow Lite", "ESP32", "Python"]
+      tags: ["C", "ESP-IDF", "FreeRTOS", "LVGL", "ESP-DL", "PyTorch", "ESP32-S3"]
       repo_url: ""
       featured: false
 
@@ -152,7 +152,9 @@ experience:
       start: "2025-05"
       end: "2025-07"
       points:
-        - "ML model selection and TFLite deployment on ESP32 for a smart thermostat."
+        - "Built an ESP32-S3 touchscreen smart thermostat on FreeRTOS and LVGL, with Auto, Manual and Away modes."
+        - "Trained and quantized a PyTorch setpoint model (0.73 °C error) and deployed it on-device with ESP-DL, with retraining from user corrections."
+      tech: ["C", "ESP-IDF", "FreeRTOS", "LVGL", "ESP-DL", "PyTorch"]
     - role: "Computer Vision Intern"
       company: "DunavNET"
       company_url: ""

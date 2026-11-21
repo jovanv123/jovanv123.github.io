@@ -1,0 +1,76 @@
+---
+title: "Forrest: RL Locomotion for an Ostrich-Inspired Biped"
+slug: "forrest"
+context: "Reinforcement learning · MuJoCo · RoboTUM, TUM"
+role: "RL policy training"
+year: 2026
+result: "3.9 m/s in sim"                          # card footer
+summary: "RoboTUM is building Forrest, a tendon-driven biped modelled on the ostrich, with the goal of making it the fastest animal-inspired humanoid in the world. I train its running policies: I ported the robot and its tendon network to native MuJoCo, built a GPU training pipeline that simulates 16 384 robots in parallel on MuJoCo Warp, and shaped a policy that runs at close to 4 m/s in simulation within the real motor limits."
+media: "media/forrest/forrest-sim.mp4"           # home card hover preview
+focus: "50% 45%"                                 # card crop (object-position)
+cover: { src: "./forrest-hardware.jpg", alt: "The Forrest biped hanging from a support crane in the RoboTUM lab" }
+slides:                                          # project page carousel, in order
+  - type: "video"
+    src: "media/forrest/forrest-sim.mp4"
+    poster: "media/forrest/forrest-sim.jpg"
+    title: "Trained policy · 2 and 4 m/s"
+    text: "The current policy with realistic motor speed limits, commanded 2.0 m/s (left) and 4.0 m/s (right): 2.05 and 3.89 m/s along its heading, no falls."
+  - type: "image"
+    src: "./forrest-hardware.jpg"
+    alt: "The Forrest biped hanging from a support crane in the RoboTUM lab"
+    title: "The robot"
+    text: "Forrest in the lab: hip motors in the torso drive the legs through a network of cables and pulleys, like an ostrich’s tendons."
+  - type: "image"
+    src: "./j5-pulley-comparison.png"
+    alt: "Simulation frames comparing the hardware 40 mm toe pulley, where the toe snaps through, with a 20 mm pulley, where the leg holds"
+    title: "j5 pulley design study"
+    text: "Motors holding the start pose, no policy. With the 40 mm hardware pulley (top) the toe joint snaps through; with a 20 mm pulley (bottom) the leg holds."
+stats:
+  - { value: "3.89 m/s", label: "tracked at a 4.0 m/s command" }
+  - { value: "16 384", label: "robots in parallel on one GPU" }
+  - { value: "35×", label: "faster tendon simulation" }
+  - { value: "1.5–2 m", label: "stride at 2 m/s" }
+tags: ["Python", "MuJoCo", "MuJoCo Warp", "PyTorch", "PPO", "Isaac Lab"]
+featured: true
+---
+
+import Flowchart from '../../../components/Flowchart.astro';
+
+## Problem
+
+Forrest is RoboTUM’s ostrich-inspired biped. Its legs are driven by five tendons per leg running over pulleys, so the joints are coupled and some cables can lift off their pulleys mid-stride. A running policy has to be trained in simulation first, and that simulation has to be both faithful to the tendon network and fast enough to run thousands of robots at once.
+
+## Simulation
+
+The original scripts computed the tendon forces in Python every step and applied them as joint torques, at about half real time.
+
+- **Native tendons**: The five tendons per leg are now MuJoCo spatial tendons with pulleys and one-sided springs, generated from the analytic model. Cables that can lift off a pulley have one version per engagement state, and a switcher picks the active one each step. It matches the analytic model and runs about 35× faster.
+- **Real geometry**: Pulley radii come from the CAD meshes and match the IsaacNext config. A design study showed the 40 mm toe pulley lets the toe snap through under the robot’s own weight, while 20 mm holds; this is proposed to the hardware team as a change.
+- **Motor realism**: Motors follow a DC torque–speed curve with the real limits, and every simulated robot gets a randomly shifted torso centre of mass.
+
+## Training
+
+The RL task mirrors RoboTUM’s Isaac Lab setup (observations, actions, PD gains, noise, terminations) on MuJoCo Warp, including a GPU version of the tendon switcher. PPO trains 16 384 robots on one RTX 5090 with left-right symmetry augmentation, a mirror loss and a speed curriculum up to 5 m/s. A phase oscillator acts as a gait clock: it tells each leg when to be on the ground and sets the target stride from the commanded speed.
+
+<Flowchart code={`
+flowchart LR
+  CMD[Speed command<br/>curriculum to 5 m/s] --> CLK[Gait clock<br/>stance / stride]
+  CLK ==> POL[PPO policy]
+  CMD ==> POL
+  POL ==> SIM[MuJoCo Warp<br/>16 384 robots]
+  SIM ==> REW[Rewards<br/>tracking · gait]
+  REW ==> POL
+`} />
+
+## Reward shaping
+
+Each reward hack showed up in the videos and gait statistics and got a targeted fix:
+
+- **Straight-leg kick**: The foot-height reward made the robot kick a straight leg forward. Height now counts only mid-swing, lifts above 35 cm are penalised, and a swing leg longer than the stance leg costs reward.
+- **Tiny steps**: The target stride was out of reach. A faster clock and a stronger step-length reward fixed it.
+- **Crouch and shuffle**: A leg-fold reward made it crouch 25 cm. The swing leg is now measured against the other leg.
+- **Push-off**: A new reward asks the foot to leave the ground well behind the hip, like a sprinting ostrich, paid once per step so it can’t be farmed by tapping.
+
+## Results
+
+The current policy runs with long, clock-timed strides, a folded swing leg and a push-off from behind the hip, at a steady 1.2 m body height. It stays within the torque limits and only briefly exceeds a speed limit when an impact pushes a joint. It uses full hip torque most of the time and runs the knee flexor at its speed limit, which is the next thing to check against the real motors before moving to hardware.

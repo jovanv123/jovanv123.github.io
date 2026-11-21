@@ -113,6 +113,15 @@ projects:
 experience:
   heading: "Experience"
   items:
+    - role: "Simulation Software Engineer (RL)"
+      company: "RoboTUM, Technical University of Munich"
+      company_url: "https://www.robotum.info/"
+      start: "2026-11"
+      end: "present"
+      points:
+        - "Training running policies for Forrest, an ostrich-inspired tendon-driven biped, with PPO on MuJoCo Warp (16 384 robots on one GPU)."
+        - "Ported the leg tendon network to native MuJoCo tendons, 35× faster than the analytic Python model."
+      tech: ["Python", "MuJoCo", "MuJoCo Warp", "PyTorch", "PPO", "Isaac Lab"]
     - role: "Mobile robotics developer"
       company: "Eurobot competition team, FTN Novi Sad"
       company_url: ""
@@ -163,6 +172,7 @@ skills:
       items:
         - { label: "ROS 2", icon: "simple-icons:ros" }
         - { label: "Gazebo", icon: "tabler:world" }
+        - { label: "MuJoCo", icon: "simple-icons:deepmind" }
         - { label: "Intrinsic Flowstate", icon: "tabler:settings-automation" }
         - { label: "UR / xArm", icon: "tabler:robot" }
     - name: "Languages"           # TODO: verify
@@ -175,6 +185,7 @@ skills:
         - { label: "YOLO", icon: "simple-icons:yolo" }
         - { label: "OpenCV", icon: "simple-icons:opencv" }
         - { label: "PyTorch", icon: "simple-icons:pytorch" }
+        - { label: "Reinforcement learning", icon: "tabler:brain" }
     - name: "Embedded / Infra"
       items:
         - { label: "STM32", icon: "simple-icons:stmicroelectronics" }

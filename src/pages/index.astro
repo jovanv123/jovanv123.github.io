@@ -74,7 +74,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 			<h2 id="projects-heading" class="meta border-b border-border pb-4 text-text">
 				<span class="text-muted">01 —</span> {site.projects.heading}
 			</h2>
-			<ul class="mt-10 grid gap-6 md:grid-cols-3" aria-label={site.featured.heading}>
+			<ul class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4" aria-label={site.featured.heading}>
 				{projects.map(({ data }, i) => (
 					<li class="min-w-0">
 						<a href={resolveHref(`projects/${data.slug}/`)} class="group flex h-full flex-col border border-border bg-background text-text no-underline hover:border-accent-hover hover:text-text focus-visible:border-accent">
@@ -83,7 +83,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 									{data.media ? (
 										<VideoLoop src={data.media} poster={thumbs[i]} autoplay={false} preload="none" class="aspect-4/3 w-full bg-surface object-cover" style={data.focus && { objectPosition: data.focus }} data-thumb aria-hidden="true" />
 									) : data.cover && (
-										<Image src={data.cover.src} alt="" widths={[360, 720]} sizes="(min-width: 768px) 33vw, 100vw" class="aspect-4/3 w-full object-cover" style={data.focus && { objectPosition: data.focus }} />
+										<Image src={data.cover.src} alt="" widths={[360, 720]} sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw" class="aspect-4/3 w-full object-cover" style={data.focus && { objectPosition: data.focus }} />
 									)}
 									{/* Hover label over the media, so it reserves no height. */}
 									<span class="absolute bottom-3 left-3 bg-inverse/60 px-2 py-1 font-mono text-xs text-inverse-text opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">View case study →</span>

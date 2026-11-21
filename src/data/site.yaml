@@ -119,9 +119,8 @@ experience:
       start: "2026-11"
       end: "present"
       points:
-        - "Training running policies for Forrest, an ostrich-inspired tendon-driven biped, with PPO on MuJoCo Warp (16 384 robots on one GPU)."
-        - "Ported the leg tendon network to native MuJoCo tendons, 35× faster than the analytic Python model."
-      tech: ["Python", "MuJoCo", "MuJoCo Warp", "PyTorch", "PPO", "Isaac Lab"]
+        - "RL policy training in MuJoCo for Forrest, an ostrich-inspired humanoid."
+      tech: ["Python", "MuJoCo", "PyTorch", "PPO"]
     - role: "Mobile robotics developer"
       company: "Eurobot competition team, FTN Novi Sad"
       company_url: ""

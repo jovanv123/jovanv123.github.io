@@ -102,14 +102,14 @@ projects:
   heading: "Selected work"
   layout: "list"                  # full-width rows separated by rules
   items:
-    - title: "Forrest: RL Locomotion for an Ostrich-Inspired Biped"
+    - title: "Humanoid RL Locomotion"
       slug: "forrest"
-      context: "Reinforcement learning · MuJoCo · RoboTUM, TUM"
+      context: "Reinforcement learning · MuJoCo · RoboTUM"
       year: 2026
-      result: "3.9 m/s in sim"
-      summary: "RL policy training for RoboTUM's Forrest, a tendon-driven ostrich-inspired biped aiming to be the fastest animal-inspired humanoid. Native MuJoCo tendon model (35× faster), PPO on MuJoCo Warp with 16 384 parallel robots, gait clock and reward shaping; runs at 3.89 m/s in simulation within real motor limits."
+      result: "RoboTUM"
+      summary: "Forrest is RoboTUM’s ostrich-inspired, tendon-driven humanoid, built to become the fastest animal-inspired humanoid in the world. I train its running policies in simulation."
       media: "media/forrest/forrest-sim.mp4"
-      tags: ["Python", "MuJoCo", "MuJoCo Warp", "PyTorch", "PPO", "Isaac Lab"]
+      tags: ["Python", "MuJoCo", "PyTorch", "PPO"]
       repo_url: ""
       featured: true
     - title: "Industrial AI Robotic Assembly"
@@ -153,9 +153,8 @@ experience:
       start: "2026-11"
       end: "present"
       points:
-        - "Training running policies for Forrest, an ostrich-inspired tendon-driven biped, with PPO on MuJoCo Warp (16 384 robots on one GPU)."
-        - "Ported the leg tendon network to native MuJoCo tendons, 35× faster than the analytic Python model."
-      tech: ["Python", "MuJoCo", "MuJoCo Warp", "PyTorch", "PPO", "Isaac Lab"]
+        - "RL policy training in MuJoCo for Forrest, an ostrich-inspired humanoid."
+      tech: ["Python", "MuJoCo", "PyTorch", "PPO"]
     - role: "Software Lead"
       company: "Eurobot team, FTN Novi Sad"
       company_url: ""

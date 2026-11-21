@@ -74,7 +74,7 @@ const row = 'grid gap-x-8 gap-y-3 py-8 md:grid-cols-12';
 			<h2 id="projects-heading" class="meta border-b border-border pb-4 text-text">
 				<span class="text-muted">01 —</span> {site.projects.heading}
 			</h2>
-			<ul class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4" aria-label={site.featured.heading}>
+			<ul class="mt-10 grid gap-6 md:grid-cols-2 lg:-mx-6 lg:grid-cols-4" aria-label={site.featured.heading}>
 				{projects.map(({ data }, i) => (
 					<li class="min-w-0">
 						<a href={resolveHref(`projects/${data.slug}/`)} class="group flex h-full flex-col border border-border bg-background text-text no-underline hover:border-accent-hover hover:text-text focus-visible:border-accent">

@@ -147,14 +147,14 @@ projects:
 experience:
   heading: "Experience"
   items:
-    - role: "Simulation Software Engineer (RL)"
-      company: "RoboTUM, Technical University of Munich"
+    - role: "Simulation Software Engineer"
+      company: "RoboTUM (robotum.info)"
       company_url: "https://www.robotum.info/"
       start: "2026-11"
       end: "present"
       points:
-        - "RL policy training in MuJoCo for Forrest, an ostrich-inspired humanoid."
-      tech: ["Python", "MuJoCo", "PyTorch", "PPO"]
+        - "RL training for the Forrest humanoid."
+      tech: ["MuJoCo", "RL"]
     - role: "Software Lead"
       company: "Eurobot team, FTN Novi Sad"
       company_url: ""
